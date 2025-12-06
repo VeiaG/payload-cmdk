@@ -1,5 +1,10 @@
 'use client'
 import type {
+  AvaibleTranslation,
+  CustomTranslationsKeys,
+  CustomTranslationsObject,
+} from 'src/translations/index.js'
+import type {
   CommandMenuContextProps,
   CommandMenuGroup,
   CommandMenuItem,
@@ -9,10 +14,10 @@ import type {
 } from 'src/types.js'
 
 import { Modal, useConfig, useModal, useTranslation } from '@payloadcms/ui'
-import { ChevronLeft, Files, Globe } from 'lucide-react'
 
 import './modal.scss'
 
+import { ChevronLeft, Files, Globe } from 'lucide-react'
 import { useRouter } from 'next/navigation.js'
 import {
   createContext,
@@ -105,7 +110,7 @@ const CommandMenuComponent: React.FC<{
 
   const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
 
   const submenuEnabled = pluginConfig?.submenu?.enabled !== false
   const submenuShortcut = pluginConfig?.submenu?.shortcut || 'shift+enter'
@@ -240,7 +245,7 @@ const CommandMenuComponent: React.FC<{
 
   const placeholder =
     currentPage === 'main'
-      ? 'Search collections, globals...'
+      ? t('cmdkPlugin:search')
       : t('general:searchBy', {
           label: currentPage.useAsTitleLabel,
         })
@@ -253,33 +258,35 @@ const CommandMenuComponent: React.FC<{
       return null
     }
 
-    const shortcuts = []
+    const shortcuts: {
+      action: AvaibleTranslation
+      key: string
+    }[] = []
 
     if (currentPage === 'main') {
       // For collections, show both submenu and navigation shortcuts
       if (submenuEnabled && highlightedItem.type === 'collection') {
         if (submenuShortcut === 'shift+enter') {
-          shortcuts.push({ action: 'to navigate', key: 'Enter' })
-          shortcuts.push({ action: 'to search in collection', key: 'Shift + Enter' })
+          shortcuts.push({ action: 'toNavigate', key: 'Enter' })
+          shortcuts.push({ action: 'toSearchIn', key: 'Shift + Enter' })
         } else {
-          shortcuts.push({ action: 'to search in collection', key: 'Enter' })
-          shortcuts.push({ action: 'to navigate', key: 'Shift + Enter' })
+          shortcuts.push({ action: 'toSearchIn', key: 'Enter' })
+          shortcuts.push({ action: 'toNavigate', key: 'Shift + Enter' })
         }
       } else {
         // For non-collections, show appropriate action
-        let actionText = 'to select'
-
+        let actionText: AvaibleTranslation = 'toSelect'
         if (highlightedItem.action.type === 'link') {
-          actionText = 'to navigate'
+          actionText = 'toNavigate'
         } else if (highlightedItem.action.type === 'api') {
-          actionText = 'to execute'
+          actionText = 'toExecute'
         }
 
         shortcuts.push({ action: actionText, key: 'Enter' })
       }
     } else {
       // In submenu, just show Enter to open/navigate
-      const actionText = highlightedItem.action.type === 'link' ? 'to open' : 'to select'
+      const actionText = highlightedItem.action.type === 'link' ? 'toOpen' : 'toSelect'
       shortcuts.push({ action: actionText, key: 'Enter' })
     }
 
@@ -381,7 +388,7 @@ const CommandMenuComponent: React.FC<{
             <div className="command__footer">
               {footerShortcuts.map((shortcut, index) => (
                 <span key={index}>
-                  <kbd>{shortcut.key}</kbd> {shortcut.action}
+                  <kbd>{shortcut.key}</kbd> {t(`cmdkPlugin:${shortcut.action}`)}
                 </span>
               ))}
             </div>

@@ -1,6 +1,8 @@
-import type { Config } from 'payload'
+import { type Config, deepMerge } from 'payload'
 
 import type { PluginCommandMenuConfig } from './types.js'
+
+import { commandPluginTranslations } from './translations/index.js'
 
 export const pluginCommandMenu =
   (pluginOptions: PluginCommandMenuConfig) =>
@@ -31,6 +33,16 @@ export const pluginCommandMenu =
       },
       path: 'plugin-command-menu/client#CommandMenuProvider',
     })
+
+    //Adding translations
+    if (!config.i18n) {
+      config.i18n = {}
+    }
+    if (!config.i18n.translations) {
+      config.i18n.translations = {}
+    }
+
+    config.i18n.translations = deepMerge(config.i18n.translations, commandPluginTranslations)
 
     return config
   }
