@@ -487,7 +487,9 @@ export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
   const { closeModal, isModalOpen, openModal, toggleModal } = useModal()
   const [currentPage, setCurrentPage] = useState<CommandMenuPage>('main')
 
-  useHotkeys(pluginConfig.shortcut || ['meta+k', 'ctrl+k'], () => {
+  useHotkeys(pluginConfig.shortcut || ['meta+k', 'ctrl+k'], (event) => {
+    event.preventDefault()
+    event.stopPropagation()
     toggleModal(MODAL_SLUG)
   })
   const { config } = useConfig()
