@@ -16,6 +16,11 @@
     justify-content: center;
     padding: calc(var(--base) * 6) calc(var(--base) * 1);
 
+    // Transition animations - only opacity on the modal wrapper
+    will-change: opacity;
+    transition: opacity 250ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+
     // Dark background with pseudo element
     &::before {
       content: '';
@@ -39,11 +44,38 @@
       width: 100%;
       max-width: 640px;
       max-height: 500px;
-      
+
+      // Transform animations on the command itself
+      will-change: transform;
+      transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(0.96) translateY(-20px);
+
       @media (max-width: 768px) {
         max-width: 100%;
         max-height: 70vh;
       }
+    }
+  }
+
+  // Enter/Appear animations (opening) - target parent dialog element
+  .payload__modal-item--appearActive .command-modal,
+  .payload__modal-item--appearDone .command-modal,
+  .payload__modal-item--enterActive .command-modal,
+  .payload__modal-item--enterDone .command-modal {
+    opacity: 1;
+
+    .command {
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  // Exit animation (closing) - target parent dialog element
+  .payload__modal-item--exitActive .command-modal,
+  .payload__modal-item--exitDone .command-modal {
+    opacity: 0;
+
+    .command {
+      transform: scale(0.96) translateY(-20px);
     }
   }
 
