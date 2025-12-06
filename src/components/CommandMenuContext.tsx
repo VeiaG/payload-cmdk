@@ -101,6 +101,7 @@ const CommandMenuComponent: React.FC<{
 
   const submenuEnabled = pluginConfig?.submenu?.enabled !== false
   const submenuShortcut = pluginConfig?.submenu?.shortcut || 'shift+enter'
+  const blurBg = pluginConfig?.blurBg !== false
 
   const formatShortcutKey = (key: string): string => {
     // Handle compound shortcuts like "Shift + Enter"
@@ -138,7 +139,9 @@ const CommandMenuComponent: React.FC<{
         const searchParam = search
           ? `&where[${currentPage.useAsTitle}][like]=${encodeURIComponent(search)}`
           : ''
-        const response = await fetch(`/api/${currentPage.slug}?limit=10${searchParam}`)
+        const response = await fetch(
+          `/api/${currentPage.slug}?limit=10${searchParam}&select[${currentPage.useAsTitle}]=true`,
+        )
         const data = await response.json()
 
         if (data.docs && Array.isArray(data.docs)) {
@@ -338,7 +341,10 @@ const CommandMenuComponent: React.FC<{
   return (
     <Modal slug={MODAL_SLUG}>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-      <div className="command-modal" onClick={handleBackdropClick}>
+      <div
+        className={`command-modal ${blurBg ? 'command-modal--blur' : ''}`}
+        onClick={handleBackdropClick}
+      >
         <Command label="Command Menu" shouldFilter={!shouldDisableFilter}>
           {/* Header for submenu navigation */}
           {currentPage !== 'main' && (

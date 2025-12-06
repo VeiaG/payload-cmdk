@@ -34,6 +34,11 @@ export type CustomMenuGroup = {
  */
 export type PluginCommandMenuConfig = {
   /**
+   * Enable backdrop blur effect
+   * @default true
+   */
+  blurBg?: boolean
+  /**
    * Custom items or groups to add to the command menu.
    */
   customItems?: (CustomMenuGroup | CustomMenuItem)[]

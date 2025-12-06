@@ -30,8 +30,12 @@
       right: 0;
       bottom: 0;
       background: var(--theme-overlay);
-      backdrop-filter: blur(4px);
       z-index: -1;
+    }
+
+    // Add blur when enabled - apply to wrapper instead of pseudo-element
+    &--blur {
+      backdrop-filter: blur(12px);
     }
 
     @media (max-width: 768px) {
