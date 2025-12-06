@@ -38,6 +38,12 @@ export type PluginCommandMenuConfig = {
    */
   disabled?: boolean
   /**
+   * Keyboard shortcut to open the command menu.
+   * (sadly, ctrl+k opens browser search in chrome)
+   * @default 'ctrl+shift+k'
+   */
+  shortcut?: string
+  /**
    * Specify which collections slugs remove from the command menu.
    * @default ['payload-migrations','payload-preferences','payload-locked-documents']
    *
@@ -56,10 +62,30 @@ export type PluginCommandMenuConfig = {
         replaceDefaults?: boolean
       }
     | CollectionSlug[]
+  /**
+   * Configure submenu behavior for collections.
+   * When enabled, users can search within a collection's documents.
+   * @default { enabled: true, shortcut: 'shift+enter' }
+   */
+  submenu?: {
+    /**
+     * Enable or disable submenu functionality.
+     * @default true
+     */
+    enabled?: boolean
+    /**
+     * Keyboard shortcut to open collection submenu.
+     * - 'shift+enter': Shift+Enter opens submenu, Enter navigates to collection list
+     * - 'enter': Enter opens submenu, Shift+Enter navigates to collection list
+     * @default 'shift+enter'
+     */
+    shortcut?: 'enter' | 'shift+enter'
+  }
 }
 
 export interface CommandMenuContextProps {
   children: React.ReactNode
+  pluginConfig: PluginCommandMenuConfig
 }
 
 export interface CommandMenuActionLink {
@@ -94,9 +120,50 @@ export interface CommandMenuItem {
    * @default 'custom'
    */
   type: 'collection' | 'custom' | 'global'
+  /**
+   * Field name used as title for collection documents.
+   * Only applicable for collection type items.
+   * Defaults to 'id' if not specified.
+   */
+  useAsTitle?: string
 }
 
 export interface CommandMenuGroup {
   items: CommandMenuItem[]
   title: string
+}
+
+/**
+ * Page state for command menu navigation.
+ * - 'main': Default view showing all collections/globals/custom items
+ * - CollectionSearchPage: Submenu view for searching within a specific collection
+ */
+export type CommandMenuPage =
+  | 'main'
+  | {
+      /**
+       * Collection label for display
+       */
+      label: string
+      /**
+       * Collection slug
+       */
+      slug: string
+      /**
+       * Page type identifier
+       */
+      type: 'collection-search'
+      /**
+       * Field name to use as document title
+       */
+      useAsTitle: string
+    }
+
+/**
+ * Generic document type for collections, with dynamic keys.
+ * We assume values are either string or number for simplicity, useAsTitle is making sure of that.
+ */
+export type GenericCollectionDocument = {
+  [key: string]: number | string
+  id: string
 }

@@ -1,31 +1,33 @@
-//Command menu context
-//Contains types and context provider for command menu state management
-//Also renders the command menu component, which uses the context
 'use client'
-import type { ClientConfig } from 'payload'
 import type {
   CommandMenuContextProps,
   CommandMenuGroup,
   CommandMenuItem,
+  CommandMenuPage,
+  GenericCollectionDocument,
   PluginCommandMenuConfig,
 } from 'src/types.js'
 
 import { Modal, useConfig, useModal, useTranslation } from '@payloadcms/ui'
-import { Files, Globe } from 'lucide-react'
+import { ChevronLeft, Files, Globe } from 'lucide-react'
 
 import './modal.scss'
 
 import { useRouter } from 'next/navigation.js'
-import { createContext, Fragment, useCallback, useContext, useMemo, useState } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
-
 import {
-  convertConfigGroup,
-  convertConfigItem,
-  extractLocalizedCollectionName,
-  extractLocalizedGlobalName,
-  extractLocalizedGroupName,
-} from '../utils/index.js'
+  createContext,
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { createDefaultGroups } from 'src/utils/index.js'
+
+import { useMutationObserver } from '../hooks/useMutationObserver.js'
 import {
   Command,
   CommandEmpty,
@@ -39,33 +41,25 @@ import {
 
 const MODAL_SLUG = 'command-menu'
 
-/**
- * Set of collection/globals slugs to ignore in the command menu.
- * This is useful to avoid showing certain collections/globals in the command menu.
- *
- * TODO: Make this configurable via plugin options.
- */
-const DEFAULT_SLUGS_TO_IGNORE: string[] = [
-  'payload-migrations',
-  'payload-preferences',
-  'payload-locked-documents',
-]
-
 interface CommandMenuContextType {
   closeMenu: () => void
+  currentPage: CommandMenuPage
   groups: CommandMenuGroup[]
   isOpen: boolean
   items: CommandMenuItem[]
   openMenu: () => void
+  setPage: (page: CommandMenuPage) => void
   toggleMenu: () => void
 }
 
 const CommandMenuContext = createContext<CommandMenuContextType>({
   closeMenu: () => {},
+  currentPage: 'main',
   groups: [],
   isOpen: false,
   items: [],
   openMenu: () => {},
+  setPage: () => {},
   toggleMenu: () => {},
 })
 
@@ -74,136 +68,99 @@ const useCommandMenu = () => {
   return context
 }
 
-const createDefaultGroups = (
-  config: ClientConfig,
-  currentLang: string,
-): {
-  groups: CommandMenuGroup[]
-  /**
-   * Stray items that don't belong to any group.
-   * Only with custom items.
-   */
-  items: CommandMenuItem[]
-} => {
-  const groups: CommandMenuGroup[] = []
-  const items: CommandMenuItem[] = []
-  const avaibleGroups = new Set<string>() //To avoid duplicates
-  let slugsToIgnore = [...DEFAULT_SLUGS_TO_IGNORE]
+// Wrapper component that tracks when it becomes highlighted
+const TrackedCommandItem: React.FC<
+  {
+    onHighlight?: () => void
+  } & React.ComponentProps<typeof CommandItem>
+> = ({ children, onHighlight, ...props }) => {
+  const ref = useRef<HTMLDivElement>(null)
 
-  //@ts-expect-error - we forced to use config.pluginCommandMenu because config.custom is not available client-side
-  const pluginConfig = config.pluginCommandMenu as unknown as PluginCommandMenuConfig
-
-  //Handle slugs to ignore from plugin config
-  if (pluginConfig?.slugsToIgnore) {
-    if (Array.isArray(pluginConfig.slugsToIgnore)) {
-      slugsToIgnore.push(...pluginConfig.slugsToIgnore)
-    } else {
-      //Object with ignoreList and replaceDefaults
-      if (pluginConfig.slugsToIgnore.replaceDefaults) {
-        //Replace defaults
-        slugsToIgnore = [] //Reset
-      }
-      slugsToIgnore.push(...pluginConfig.slugsToIgnore.ignoreList)
-    }
-  }
-
-  if (config.collections) {
-    config.collections.forEach((collection) => {
-      if (slugsToIgnore.includes(collection.slug)) {
-        return
-      }
-
-      const groupName = extractLocalizedGroupName(collection, currentLang) || 'Collections'
-      //   console.log(collection.slug, 'groupName:', groupName, 'Object', collection.admin)
-      if (!avaibleGroups.has(groupName)) {
-        avaibleGroups.add(groupName)
-        groups.push({
-          items: [],
-          title: groupName,
-        })
-      }
-      const group = groups.find((g) => g.title === groupName)
-      if (group) {
-        group.items.push({
-          slug: collection.slug,
-          type: 'collection',
-          action: {
-            type: 'link',
-            href: `/admin/collections/${collection.slug}`,
-          },
-          label: extractLocalizedCollectionName(collection, currentLang),
-        })
+  useMutationObserver(ref, (mutations) => {
+    mutations.forEach((mutation) => {
+      if (
+        mutation.type === 'attributes' &&
+        mutation.attributeName === 'aria-selected' &&
+        ref.current?.getAttribute('aria-selected') === 'true'
+      ) {
+        onHighlight?.()
       }
     })
-  }
-  //Globals
-  if (config.globals) {
-    config.globals.forEach((global) => {
-      if (slugsToIgnore.includes(global.slug)) {
-        return
-      }
-      //Same logic as collections
-      const groupName = extractLocalizedGroupName(global, currentLang) || 'Globals'
-      if (!avaibleGroups.has(groupName)) {
-        avaibleGroups.add(groupName)
-        groups.push({
-          items: [],
-          title: groupName,
-        })
-      }
-      const group = groups.find((g) => g.title === groupName)
-      if (group) {
-        group.items.push({
-          slug: global.slug,
-          type: 'global',
-          action: {
-            type: 'link',
-            href: `/admin/globals/${global.slug}`,
-          },
-          label: extractLocalizedGlobalName(global, currentLang),
-        })
-      }
-    })
-  }
-  //Now custom items/groups from plugin config
-  if (pluginConfig?.customItems) {
-    //We are not using slugsToIgnore for custom items, as they are user-defined
-    pluginConfig.customItems.forEach((value) => {
-      if (value.type === 'group') {
-        const convertedGroup = convertConfigGroup(value, currentLang)
-        //Check if group already exists using our set
-        if (!avaibleGroups.has(convertedGroup.title)) {
-          avaibleGroups.add(convertedGroup.title)
-          groups.push({
-            items: [], //Don't add items yet, will do below
-            title: convertedGroup.title,
-          })
-        }
-        const group = groups.find((g) => g.title === convertedGroup.title)
-        if (group) {
-          //Append items to existing group, or if it was empty - add items
-          group.items.push(...convertedGroup.items)
-        }
-      }
-      if (value.type === 'item') {
-        //Stray item, add to items array
-        const convertedItem = convertConfigItem(value, currentLang)
-        items.push(convertedItem)
-      }
-    })
-  }
-  return { groups, items }
+  })
+
+  return (
+    <CommandItem ref={ref} {...props}>
+      {children}
+    </CommandItem>
+  )
 }
 
-const CommandMenuComponent: React.FC = () => {
+const CommandMenuComponent: React.FC<{
+  pluginConfig: PluginCommandMenuConfig
+}> = ({ pluginConfig }) => {
   const [search, setSearch] = useState('')
+  const [submenuItems, setSubmenuItems] = useState<CommandMenuItem[]>([])
+  const [isLoadingSubmenu, setIsLoadingSubmenu] = useState(false)
+  const [highlightedItem, setHighlightedItem] = useState<CommandMenuItem | null>(null)
 
-  const { closeMenu, groups, items } = useCommandMenu()
+  const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
   const router = useRouter()
   const { t } = useTranslation()
 
-  const handleSelect = useCallback(
+  const submenuEnabled = pluginConfig?.submenu?.enabled !== false
+  const submenuShortcut = pluginConfig?.submenu?.shortcut || 'shift+enter'
+
+  // Debounced search for submenu
+  useEffect(() => {
+    if (currentPage === 'main') {
+      return
+    }
+
+    const fetchDocuments = async () => {
+      if (currentPage.type !== 'collection-search') {
+        return
+      }
+
+      setIsLoadingSubmenu(true)
+      try {
+        const searchParam = search
+          ? `&where[${currentPage.useAsTitle}][like]=${encodeURIComponent(search)}`
+          : ''
+        const response = await fetch(`/api/${currentPage.slug}?limit=10${searchParam}`)
+        const data = await response.json()
+
+        if (data.docs && Array.isArray(data.docs)) {
+          const docs: CommandMenuItem[] = data.docs.map((doc: GenericCollectionDocument) => ({
+            slug: `${currentPage.slug}-${doc.id}`,
+            type: 'custom' as const,
+            action: {
+              type: 'link',
+              href: `/admin/collections/${currentPage.slug}/${doc.id}`,
+            },
+            label: doc[currentPage.useAsTitle] || doc.id,
+          }))
+          setSubmenuItems(docs)
+        }
+      } catch {
+        setSubmenuItems([])
+      } finally {
+        setIsLoadingSubmenu(false)
+      }
+    }
+
+    const timeoutId = setTimeout(fetchDocuments, 300)
+    return () => clearTimeout(timeoutId)
+  }, [search, currentPage])
+
+  const handleBack = useCallback(() => {
+    setPage('main')
+    setSearch('')
+    setSubmenuItems([])
+  }, [setPage])
+
+  const executeItemAction = useCallback(
     async (item: CommandMenuItem) => {
+      // Execute the item's action
       switch (item.action.type) {
         case 'api':
           await fetch(item.action.href, {
@@ -221,96 +178,246 @@ const CommandMenuComponent: React.FC = () => {
           break
       }
       closeMenu()
-      //Reset search
+      setSearch('')
+      setPage('main')
+    },
+    [router, closeMenu, setPage],
+  )
+
+  const openSubmenu = useCallback(
+    (item: CommandMenuItem) => {
+      setPage({
+        slug: item.slug,
+        type: 'collection-search',
+        label: item.label,
+        useAsTitle: item.useAsTitle || 'id',
+      })
       setSearch('')
     },
-    [router, closeMenu],
+    [setPage],
   )
+
+  const handleSelect = useCallback(
+    async (item: CommandMenuItem) => {
+      await executeItemAction(item)
+    },
+    [executeItemAction],
+  )
+
+  // Handle keyboard events for navigation and back
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC key for back navigation in submenu
+      if (e.key === 'Escape' && currentPage !== 'main') {
+        e.preventDefault()
+        e.stopPropagation()
+        handleBack()
+        return
+      }
+
+      // Enter/Shift+Enter handling for collection submenu
+      if (e.key === 'Enter' && highlightedItem && currentPage === 'main') {
+        if (submenuEnabled && highlightedItem.type === 'collection') {
+          const isShiftPressed = e.shiftKey
+          const shouldOpenSubmenu =
+            (submenuShortcut === 'shift+enter' && isShiftPressed) ||
+            (submenuShortcut === 'enter' && !isShiftPressed)
+
+          if (shouldOpenSubmenu) {
+            e.preventDefault()
+            e.stopPropagation()
+            openSubmenu(highlightedItem)
+            return
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [currentPage, handleBack, highlightedItem, submenuEnabled, submenuShortcut, openSubmenu])
+
+  const placeholder = currentPage === 'main' ? 'Search collections, globals...' : 'Search...'
+
+  const shouldDisableFilter = currentPage !== 'main'
+
+  // Dynamic footer text based on highlighted item
+  const getFooterText = () => {
+    if (!highlightedItem) {
+      return null
+    }
+
+    const shortcuts = []
+
+    if (currentPage === 'main') {
+      // For collections, show both submenu and navigation shortcuts
+      if (submenuEnabled && highlightedItem.type === 'collection') {
+        if (submenuShortcut === 'shift+enter') {
+          shortcuts.push({ action: 'to navigate', key: 'Enter' })
+          shortcuts.push({ action: 'to search in collection', key: 'Shift + Enter' })
+        } else {
+          shortcuts.push({ action: 'to search in collection', key: 'Enter' })
+          shortcuts.push({ action: 'to navigate', key: 'Shift + Enter' })
+        }
+      } else {
+        // For non-collections, show appropriate action
+        let actionText = 'to select'
+
+        if (highlightedItem.action.type === 'link') {
+          actionText = 'to navigate'
+        } else if (highlightedItem.action.type === 'api') {
+          actionText = 'to execute'
+        }
+
+        shortcuts.push({ action: actionText, key: 'Enter' })
+      }
+    } else {
+      // In submenu, just show Enter to open/navigate
+      const actionText = highlightedItem.action.type === 'link' ? 'to open' : 'to select'
+      shortcuts.push({ action: actionText, key: 'Enter' })
+    }
+
+    return shortcuts
+  }
+
+  const footerShortcuts = getFooterText()
 
   return (
     <Modal slug={MODAL_SLUG}>
       <div className="command-modal">
-        <Command label="Command Menu">
-          <CommandInput
-            onValueChange={setSearch}
-            // placeholder={t('general:searchBy')} -- will be used later for searching inside collections
-            placeholder="TODO: Add search placeholder i18n"
-            value={search}
-          />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {groups.map((group, index) => {
-              //Skip empty groups
-              if (group.items.length === 0) {
-                return null
-              }
-              let titleName = group.title
-              if (group.title === 'Collections') {
-                titleName = t('general:collections')
-              }
-              if (group.title === 'Globals') {
-                titleName = t('general:globals')
-              }
+        <Command filter={shouldDisableFilter ? () => 1 : undefined} label="Command Menu">
+          {/* Header for submenu navigation */}
+          {currentPage !== 'main' && (
+            <div className="command__header">
+              <button className="command__back-button" onClick={handleBack} type="button">
+                <ChevronLeft size={16} />
+              </button>
+              <span className="command__header-label">Search in {currentPage.label}</span>
+            </div>
+          )}
 
-              const isRenderSeparator = !(index === groups.length - 1 && items.length === 0)
-              return (
-                <Fragment key={group.title}>
-                  <CommandGroup heading={titleName}>
-                    {group.items.map((item) => (
-                      <CommandItem key={item.slug} onSelect={() => handleSelect(item)}>
-                        {item.type === 'collection' ? (
-                          <Files className="command__item-icon" />
-                        ) : item.type === 'global' ? (
-                          <Globe className="command__item-icon" />
-                        ) : null}
-                        {item.label}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                  {isRenderSeparator && ( //No stray items, so no need for extra separator
-                    <CommandSeparator />
-                  )}
-                </Fragment>
-              )
-            })}
-            {items?.map((item) => (
-              <CommandItem key={item.slug} onSelect={() => handleSelect(item)}>
-                {item.label}
-              </CommandItem>
-            ))}
+          <CommandInput onValueChange={setSearch} placeholder={placeholder} value={search} />
+          <CommandList>
+            <CommandEmpty>{isLoadingSubmenu ? 'Loading...' : 'No results found.'}</CommandEmpty>
+
+            {/* Main page view */}
+            {currentPage === 'main' &&
+              groups.map((group, index) => {
+                if (group.items.length === 0) {
+                  return null
+                }
+
+                let titleName = group.title
+                if (group.title === 'Collections') {
+                  titleName = t('general:collections')
+                }
+                if (group.title === 'Globals') {
+                  titleName = t('general:globals')
+                }
+
+                const isRenderSeparator = !(index === groups.length - 1 && items.length === 0)
+                return (
+                  <Fragment key={group.title}>
+                    <CommandGroup heading={titleName}>
+                      {group.items.map((item) => (
+                        <TrackedCommandItem
+                          key={item.slug}
+                          onHighlight={() => setHighlightedItem(item)}
+                          onSelect={() => handleSelect(item)}
+                          value={item.slug}
+                        >
+                          {item.type === 'collection' ? (
+                            <Files className="command__item-icon" />
+                          ) : item.type === 'global' ? (
+                            <Globe className="command__item-icon" />
+                          ) : null}
+                          {item.label}
+                          {submenuEnabled && item.type === 'collection' && (
+                            <CommandShortcut>›</CommandShortcut>
+                          )}
+                        </TrackedCommandItem>
+                      ))}
+                    </CommandGroup>
+                    {isRenderSeparator && <CommandSeparator />}
+                  </Fragment>
+                )
+              })}
+
+            {/* Stray items on main page */}
+            {currentPage === 'main' &&
+              items?.map((item) => (
+                <TrackedCommandItem
+                  key={item.slug}
+                  onHighlight={() => setHighlightedItem(item)}
+                  onSelect={() => handleSelect(item)}
+                  value={item.slug}
+                >
+                  {item.label}
+                </TrackedCommandItem>
+              ))}
+
+            {/* Submenu page view */}
+            {currentPage !== 'main' &&
+              submenuItems.map((item) => (
+                <TrackedCommandItem
+                  key={item.slug}
+                  onHighlight={() => setHighlightedItem(item)}
+                  onSelect={() => handleSelect(item)}
+                  value={item.slug}
+                >
+                  {item.label}
+                </TrackedCommandItem>
+              ))}
           </CommandList>
+
+          {/* Footer with dynamic shortcuts */}
+          {footerShortcuts && footerShortcuts.length > 0 && (
+            <div className="command__footer">
+              {footerShortcuts.map((shortcut, index) => (
+                <span key={index}>
+                  <kbd>{shortcut.key}</kbd> {shortcut.action}
+                </span>
+              ))}
+            </div>
+          )}
         </Command>
       </div>
     </Modal>
   )
 }
 
-export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({ children }) => {
+export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
+  children,
+  pluginConfig,
+}) => {
   const { closeModal, isModalOpen, openModal, toggleModal } = useModal()
+  const [currentPage, setCurrentPage] = useState<CommandMenuPage>('main')
 
-  useHotkeys('ctrl+shift+k', () => {
+  useHotkeys(pluginConfig.shortcut || 'ctrl+shift+k', () => {
     toggleModal(MODAL_SLUG)
   })
   const { config } = useConfig()
   const { i18n } = useTranslation()
   const currentLang = i18n.language
   const { groups, items } = useMemo(() => {
-    return createDefaultGroups(config, currentLang)
-  }, [config, currentLang])
+    return createDefaultGroups(config, currentLang, pluginConfig)
+  }, [config, currentLang, pluginConfig])
 
   return (
     <CommandMenuContext.Provider
       value={{
         closeMenu: () => closeModal(MODAL_SLUG),
+        currentPage,
         groups,
         isOpen: isModalOpen(MODAL_SLUG),
         items,
         openMenu: () => openModal(MODAL_SLUG),
+        setPage: setCurrentPage,
         toggleMenu: () => toggleModal(MODAL_SLUG),
       }}
     >
       {children}
-      <CommandMenuComponent />
+      <CommandMenuComponent pluginConfig={pluginConfig} />
     </CommandMenuContext.Provider>
   )
 }

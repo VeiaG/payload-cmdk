@@ -18,6 +18,52 @@
     box-shadow: 0 4px 8px -3px rgba(0, 0, 0, 0.1);
   }
 
+  // Command Header (breadcrumb area for submenu)
+  .command__header {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--base) * 0.25);
+    padding: calc(var(--base) * 0.35) calc(var(--base) * 0.5);
+    border-bottom: 1px solid var(--theme-elevation-150);
+    background: var(--theme-elevation-50);
+  }
+
+  // Command Back Button
+  .command__back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--base) * 0.15);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--theme-elevation-600);
+    transition: all 100ms cubic-bezier(0, 0.2, 0.2, 1);
+    flex-shrink: 0;
+    border-radius: var(--style-radius-s);
+
+    svg {
+      width: calc(var(--base) * 0.7);
+      height: calc(var(--base) * 0.7);
+    }
+
+    &:hover {
+      color: var(--theme-text);
+      background: var(--theme-elevation-100);
+    }
+
+    &:active {
+      background: var(--theme-elevation-150);
+    }
+  }
+
+  // Command Header Label
+  .command__header-label {
+    font-size: 0.846rem; // ~11px
+    font-weight: 500;
+    color: var(--theme-elevation-700);
+  }
+
   // Command Input Wrapper
   .command__input-wrapper {
     display: flex;
@@ -181,6 +227,27 @@
     opacity: 0.8;
   }
 
+  // Command Footer
+  .command__footer {
+    border-top: 1px solid var(--theme-elevation-150);
+    padding: calc(var(--base) * 0.5) calc(var(--base) * 0.75);
+    font-size: 0.846rem; // ~11px
+    color: var(--theme-elevation-600);
+    display: flex;
+    gap: calc(var(--base) * 1);
+    flex-wrap: wrap;
+
+    kbd {
+      padding: calc(var(--base) * 0.1) calc(var(--base) * 0.25);
+      font-family: var(--font-mono);
+      font-size: 0.769rem; // ~10px
+      background: var(--theme-elevation-100);
+      border: 1px solid var(--theme-elevation-200);
+      border-radius: var(--style-radius-s);
+      box-shadow: 0 1px 0 var(--theme-elevation-200);
+    }
+  }
+
   // Dark theme adjustments
   html[data-theme='dark'] {
     .command {
@@ -188,8 +255,33 @@
       border-color: var(--theme-elevation-200);
     }
 
+    .command__header {
+      background: var(--theme-elevation-100);
+      border-bottom-color: var(--theme-elevation-200);
+    }
+
     .command__input-wrapper {
       border-bottom-color: var(--theme-elevation-200);
+    }
+
+    .command__back-button {
+      &:hover {
+        background: var(--theme-elevation-150);
+      }
+
+      &:active {
+        background: var(--theme-elevation-200);
+      }
+    }
+
+    .command__footer {
+      border-top-color: var(--theme-elevation-200);
+
+      kbd {
+        background: var(--theme-elevation-150);
+        border-color: var(--theme-elevation-300);
+        box-shadow: 0 1px 0 var(--theme-elevation-300);
+      }
     }
 
     .command__item {

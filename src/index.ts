@@ -25,20 +25,12 @@ export const pluginCommandMenu =
       config.admin.components.providers = []
     }
 
-    //Store our config in payload config for later use
-    // config.custom accessible only server-side
-    // if (!config.custom) {
-    //   config.custom = {}
-    // }
-    // if (!config.custom.pluginCommandMenu) {
-    //   config.custom.pluginCommandMenu = {}
-    // }
-    // config.custom.pluginCommandMenu = pluginOptions
-
-    //@ts-expect-error - we forced to use config.pluginCommandMenu because config.custom is not available client-side
-    config.pluginCommandMenu = pluginOptions
-
-    config.admin.components.providers.push('plugin-command-menu/client#CommandMenuProvider')
+    config.admin.components.providers.push({
+      clientProps: {
+        pluginConfig: pluginOptions,
+      },
+      path: 'plugin-command-menu/client#CommandMenuProvider',
+    })
 
     return config
   }

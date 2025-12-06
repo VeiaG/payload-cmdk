@@ -45,8 +45,19 @@ const buildConfigWithMemoryDB = async () => {
             en: 'Content',
             uk: 'Контент',
           },
+          useAsTitle: 'title',
         },
-        fields: [],
+        fields: [
+          {
+            name: 'title',
+            type: 'text',
+            label: {
+              en: 'Title',
+              uk: 'Заголовок',
+            },
+            required: true,
+          },
+        ],
         labels: {
           plural: {
             en: 'Posts',
