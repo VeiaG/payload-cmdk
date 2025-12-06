@@ -5,6 +5,7 @@ export const commandPluginTranslations = {
   en: {
     cmdkPlugin: {
       search: 'Search collections, globals...',
+      searchIn: 'Search in {{label}}',
       toExecute: 'to execute',
       toNavigate: 'to navigate',
       toOpen: 'to open',
@@ -15,6 +16,7 @@ export const commandPluginTranslations = {
   uk: {
     cmdkPlugin: {
       search: 'Пошук колекцій, глобалів...',
+      searchIn: 'Пошук в {{label}}',
       toExecute: 'щоб виконати',
       toNavigate: 'щоб перейти',
       toOpen: 'щоб відкрити',

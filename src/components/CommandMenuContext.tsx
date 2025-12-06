@@ -305,7 +305,9 @@ const CommandMenuComponent: React.FC<{
               <button className="command__back-button" onClick={handleBack} type="button">
                 <ChevronLeft size={16} />
               </button>
-              <span className="command__header-label">Search in {currentPage.label}</span>
+              <span className="command__header-label">
+                {t('cmdkPlugin:searchIn', { label: currentPage.label })}
+              </span>
             </div>
           )}
 
