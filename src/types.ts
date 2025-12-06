@@ -67,13 +67,13 @@ export type PluginCommandMenuConfig = {
   /**
    * Configuration for the search button in the admin navigation.
    * Set to false to disable the search button.
-   * @default { position: 'nav' }
+   * @default { position: 'actions' }
    */
   searchButton?:
     | {
         /**
          * Position of the search button in the admin navigation.
-         * @default 'nav'
+         * @default 'actions'
          */
         position?: 'actions' | 'nav'
       }

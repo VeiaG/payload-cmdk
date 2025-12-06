@@ -35,7 +35,7 @@ export const pluginCommandMenu =
     })
 
     if (pluginOptions.searchButton !== false) {
-      let searchButtonPosition = 'nav'
+      let searchButtonPosition = 'actions'
       if (pluginOptions.searchButton && pluginOptions.searchButton.position) {
         searchButtonPosition = pluginOptions.searchButton.position
       }

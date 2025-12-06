@@ -2,11 +2,11 @@
 
 import './SearchButton.scss'
 
-import type { CustomTranslationsKeys, CustomTranslationsObject } from '../translations'
-
 import { useTranslation } from '@payloadcms/ui'
 import { SearchIcon } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
+
+import type { CustomTranslationsKeys, CustomTranslationsObject } from '../translations'
 
 import { useCommandMenu } from './CommandMenuContext'
 
@@ -15,13 +15,16 @@ interface SearchButtonProps {
   shortcut?: string
 }
 
-const SearchButton: React.FC<SearchButtonProps> = ({ position = 'nav', shortcut = 'ctrl+shift+k' }) => {
+const SearchButton: React.FC<SearchButtonProps> = ({
+  position = 'actions',
+  shortcut = 'ctrl+shift+k',
+}) => {
   const { openMenu } = useCommandMenu()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
   const [isMac, setIsMac] = useState(false)
 
   useEffect(() => {
-    setIsMac(/(Mac|iPhone|iPod|iPad)/i.test(navigator.platform))
+    setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
   }, [])
 
   const formatShortcut = (shortcutString: string): string[] => {
