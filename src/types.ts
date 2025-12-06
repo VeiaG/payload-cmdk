@@ -85,10 +85,13 @@ export type PluginCommandMenuConfig = {
     | false
   /**
    * Keyboard shortcut to open the command menu.
-   * (sadly, ctrl+k opens browser search in chrome)
-   * @default 'ctrl+shift+k'
+   * Can be a single shortcut string or an array of shortcuts for cross-platform support.
+   * @default ['meta+k', 'ctrl+k']
+   * @example 'mod+k' or ['meta+k', 'ctrl+k']
+   *
+   * More details here - https://react-hotkeys-hook.vercel.app/docs/intro
    */
-  shortcut?: string
+  shortcut?: string | string[]
   /**
    * Specify which collections slugs remove from the command menu.
    * @default ['payload-migrations','payload-preferences','payload-locked-documents']

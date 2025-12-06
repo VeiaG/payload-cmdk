@@ -47,7 +47,7 @@ export const pluginCommandMenu =
           {
             clientProps: {
               position: pluginOptions.searchButton?.position || 'nav',
-              shortcut: pluginOptions.shortcut || 'ctrl+shift+k',
+              shortcut: pluginOptions.shortcut || ['meta+k', 'ctrl+k'],
             },
             path: 'plugin-command-menu/client#SearchButton',
           },
@@ -60,7 +60,7 @@ export const pluginCommandMenu =
         config.admin.components.actions.push({
           clientProps: {
             position: pluginOptions.searchButton?.position || 'actions',
-            shortcut: pluginOptions.shortcut || 'ctrl+shift+k',
+            shortcut: pluginOptions.shortcut || ['meta+k', 'ctrl+k'],
           },
           path: 'plugin-command-menu/client#SearchButton',
         })

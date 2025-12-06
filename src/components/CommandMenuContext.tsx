@@ -19,7 +19,7 @@ import type {
 } from 'src/types'
 
 import { Modal, useConfig, useModal, useTranslation } from '@payloadcms/ui'
-import { ChevronLeft } from 'lucide-react'
+import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useRouter } from 'next/navigation'
 import {
@@ -103,24 +103,34 @@ const CommandMenuComponent: React.FC<{
   const submenuShortcut = pluginConfig?.submenu?.shortcut || 'shift+enter'
   const blurBg = pluginConfig?.blurBg !== false
 
-  const formatShortcutKey = (key: string): string => {
+  const formatShortcutKey = (key: string): React.ReactNode => {
     // Handle compound shortcuts like "Shift + Enter"
     const parts = key.split('+').map((part) => part.trim())
-    return parts
-      .map((part) => {
-        const lowerPart = part.toLowerCase()
-        if (lowerPart === 'ctrl' || lowerPart === 'cmd') {
-          return isMac ? '⌘' : 'Ctrl'
-        }
-        if (lowerPart === 'shift') {
-          return isMac ? '⇧' : 'Shift'
-        }
-        if (lowerPart === 'alt') {
-          return isMac ? '⌥' : 'Alt'
-        }
-        return part
-      })
-      .join(isMac ? '' : ' + ')
+    const elements = parts.map((part, index) => {
+      const lowerPart = part.toLowerCase()
+      let content: React.ReactNode
+
+      if (lowerPart === 'ctrl' || lowerPart === 'cmd') {
+        content = isMac ? <CommandIcon size={12} /> : 'Ctrl'
+      } else if (lowerPart === 'meta') {
+        content = isMac ? <CommandIcon size={12} /> : 'Ctrl'
+      } else if (lowerPart === 'shift') {
+        content = isMac ? <ArrowBigUp size={12} /> : 'Shift'
+      } else if (lowerPart === 'alt') {
+        content = isMac ? <Option size={12} /> : 'Alt'
+      } else {
+        content = part
+      }
+
+      return (
+        <Fragment key={index}>
+          {content}
+          {!isMac && index < parts.length - 1 && ' + '}
+        </Fragment>
+      )
+    })
+
+    return <>{elements}</>
   }
 
   // Debounced search for submenu
@@ -391,6 +401,7 @@ const CommandMenuComponent: React.FC<{
                             data-action-type={item.action.type}
                             data-item-type={item.type}
                             key={item.slug}
+                            keywords={[group.title]}
                             onSelect={() => handleSelect(item)}
                             value={item.slug}
                           >
@@ -476,7 +487,7 @@ export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
   const { closeModal, isModalOpen, openModal, toggleModal } = useModal()
   const [currentPage, setCurrentPage] = useState<CommandMenuPage>('main')
 
-  useHotkeys(pluginConfig.shortcut || 'ctrl+shift+k', () => {
+  useHotkeys(pluginConfig.shortcut || ['meta+k', 'ctrl+k'], () => {
     toggleModal(MODAL_SLUG)
   })
   const { config } = useConfig()

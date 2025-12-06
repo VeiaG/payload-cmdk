@@ -3,7 +3,7 @@
 import './SearchButton.scss'
 
 import { useTranslation } from '@payloadcms/ui'
-import { SearchIcon } from 'lucide-react'
+import { ArrowBigUp, Command as CommandIcon, Option, SearchIcon } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import type { CustomTranslationsKeys, CustomTranslationsObject } from '../translations'
@@ -12,12 +12,12 @@ import { useCommandMenu } from './CommandMenuContext'
 
 interface SearchButtonProps {
   position?: 'actions' | 'nav'
-  shortcut?: string
+  shortcut?: string | string[]
 }
 
 const SearchButton: React.FC<SearchButtonProps> = ({
   position = 'actions',
-  shortcut = 'ctrl+shift+k',
+  shortcut = ['meta+k', 'ctrl+k'],
 }) => {
   const { openMenu } = useCommandMenu()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
@@ -27,23 +27,47 @@ const SearchButton: React.FC<SearchButtonProps> = ({
     setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
   }, [])
 
-  const formatShortcut = (shortcutString: string): string[] => {
+  const formatShortcut = (
+    shortcutString: string,
+  ): Array<{ icon?: React.ReactNode; text?: string }> => {
     const parts = shortcutString.split('+').map((part) => part.trim().toLowerCase())
     return parts.map((part) => {
       if (part === 'ctrl' || part === 'cmd') {
-        return isMac ? '⌘' : 'Ctrl'
+        return isMac ? { icon: <CommandIcon size={12} /> } : { text: 'Ctrl' }
+      }
+      if (part === 'meta') {
+        return isMac ? { icon: <CommandIcon size={12} /> } : { text: 'Ctrl' }
       }
       if (part === 'shift') {
-        return isMac ? '⇧' : 'Shift'
+        return isMac ? { icon: <ArrowBigUp size={12} /> } : { text: 'Shift' }
       }
       if (part === 'alt') {
-        return isMac ? '⌥' : 'Alt'
+        return isMac ? { icon: <Option size={12} /> } : { text: 'Alt' }
       }
-      return part.toUpperCase()
+      return { text: part.toUpperCase() }
     })
   }
 
-  const shortcutParts = formatShortcut(shortcut)
+  // Select the appropriate shortcut to display based on platform
+  const getDisplayShortcut = (): string => {
+    if (typeof shortcut === 'string') {
+      return shortcut
+    }
+    // If array, prefer meta shortcut for Mac, ctrl shortcut for others
+    const metaShortcut = shortcut.find((s) => s.toLowerCase().includes('meta'))
+    const ctrlShortcut = shortcut.find((s) => s.toLowerCase().includes('ctrl'))
+
+    if (isMac && metaShortcut) {
+      return metaShortcut
+    }
+    if (!isMac && ctrlShortcut) {
+      return ctrlShortcut
+    }
+    // Fallback to first shortcut
+    return shortcut[0] || 'meta+k'
+  }
+
+  const shortcutParts = formatShortcut(getDisplayShortcut())
 
   return (
     <button
@@ -58,7 +82,7 @@ const SearchButton: React.FC<SearchButtonProps> = ({
         )}
         <div className="search-button__shortcuts">
           {shortcutParts.map((part, index) => (
-            <kbd key={index}>{part}</kbd>
+            <kbd key={index}>{part.icon ? part.icon : part.text}</kbd>
           ))}
         </div>
       </div>

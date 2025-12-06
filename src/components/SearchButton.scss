@@ -70,12 +70,23 @@
     kbd {
       padding: calc(var(--base) * 0.1) calc(var(--base) * 0.25);
       font-family: var(--font-mono);
-      font-size: 0.769rem; // ~10px
+      font-size: 0.923rem; // ~12px
       background: var(--theme-elevation-100);
       border: 1px solid var(--theme-elevation-200);
       border-radius: var(--style-radius-s);
       box-shadow: 0 1px 0 var(--theme-elevation-200);
       color: var(--theme-elevation-600);
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      // Ensure icons are properly aligned and sized
+      svg {
+        width: 12px;
+        height: 12px;
+        display: block;
+      }
     }
   }
 
