@@ -1,6 +1,10 @@
-import type { CollectionSlug } from 'payload'
+import type { LucideIcon } from 'lucide-react'
+import type { IconName } from 'lucide-react/dynamic'
+import type { CollectionSlug, GlobalSlug } from 'payload'
 
 export type LocalizedString = { [locale: string]: string } | string
+
+export type InternalIcon = IconName | LucideIcon
 
 /**
  * Custom menu item, for configuration.
@@ -8,6 +12,7 @@ export type LocalizedString = { [locale: string]: string } | string
  */
 export type CustomMenuItem = {
   action: CommandMenuAction
+  icon?: IconName
   label: LocalizedString
   slug: string
   type: 'item'
@@ -37,6 +42,28 @@ export type PluginCommandMenuConfig = {
    * @default false
    */
   disabled?: boolean
+  /**
+   * Custom icons for collections and globals.
+   * Key is the collection slug, value is the icon name from lucide-react.
+   * Collections default icon - Files,
+   * Globals default icon - Globe.
+   */
+  icons?: {
+    /**
+     * Custom icons for collections.
+     * @default <Files/>
+     */
+    collections?: {
+      [key: CollectionSlug]: IconName
+    }
+    /**
+     * Custom icons for globals.
+     * @default <Globe/>
+     */
+    globals?: {
+      [key: GlobalSlug]: IconName
+    }
+  }
   /**
    * Keyboard shortcut to open the command menu.
    * (sadly, ctrl+k opens browser search in chrome)
@@ -73,6 +100,15 @@ export type PluginCommandMenuConfig = {
      * @default true
      */
     enabled?: boolean
+    /**
+     * Custom icons for collection submenus.
+     * Key is the collection slug, value is the icon name from lucide-react.
+     *
+     * @default null
+     */
+    icons?: {
+      [key: CollectionSlug]: IconName
+    }
     /**
      * Keyboard shortcut to open collection submenu.
      * - 'shift+enter': Shift+Enter opens submenu, Enter navigates to collection list
@@ -113,6 +149,7 @@ export interface CommandMenuItem {
    * Action to perform when the command menu item is selected.
    */
   action: CommandMenuAction
+  icon?: InternalIcon
   label: string
   slug: string
   /**
@@ -120,13 +157,13 @@ export interface CommandMenuItem {
    * @default 'custom'
    */
   type: 'collection' | 'custom' | 'global'
+
   /**
    * Field name used as title for collection documents.
    * Only applicable for collection type items.
    * Defaults to 'id' if not specified.
    */
   useAsTitle?: string
-
   /**
    * Label for the field used as title for collection documents.
    * Only applicable for collection type items.

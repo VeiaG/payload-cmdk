@@ -4,6 +4,8 @@ import type { enTranslations } from '@payloadcms/translations/languages/en'
 export const commandPluginTranslations = {
   en: {
     cmdkPlugin: {
+      loading: 'Loading...',
+      noResults: 'No results found',
       search: 'Search collections, globals...',
       searchIn: 'Search in {{label}}',
       toExecute: 'to execute',
@@ -15,6 +17,8 @@ export const commandPluginTranslations = {
   },
   uk: {
     cmdkPlugin: {
+      loading: 'Завантаження...',
+      noResults: 'Результатів не знайдено',
       search: 'Пошук колекцій, глобалів...',
       searchIn: 'Пошук в {{label}}',
       toExecute: 'щоб виконати',

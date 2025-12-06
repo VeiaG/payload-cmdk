@@ -1,8 +1,8 @@
 import { type Config, deepMerge } from 'payload'
 
-import type { PluginCommandMenuConfig } from './types.js'
+import type { PluginCommandMenuConfig } from './types'
 
-import { commandPluginTranslations } from './translations/index.js'
+import { commandPluginTranslations } from './translations'
 
 export const pluginCommandMenu =
   (pluginOptions: PluginCommandMenuConfig) =>

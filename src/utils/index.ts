@@ -6,7 +6,9 @@ import type {
   CustomMenuItem,
   LocalizedString,
   PluginCommandMenuConfig,
-} from 'src/types.js'
+} from 'src/types'
+
+import { Files, Globe } from 'lucide-react'
 
 export const convertSlugToTitle = (slug: string): string => {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
@@ -76,6 +78,7 @@ export const convertConfigItem = (item: CustomMenuItem, currentLang: string): Co
     slug: item.slug,
     type: 'custom',
     action: item.action,
+    icon: item.icon,
     label: extractLocalizedValue(item.label, currentLang, item.slug),
   }
 }
@@ -173,6 +176,8 @@ export const createDefaultGroups = (
             type: 'link',
             href: `/admin/collections/${collection.slug}`,
           },
+          //Either custom icon from plugin config, or default Files icon
+          icon: pluginConfig?.icons?.collections?.[collection.slug] || Files,
           label: extractLocalizedCollectionName(collection, currentLang),
           useAsTitle: useAsTitleField,
           useAsTitleLabel: useAsTitleLabel || useAsTitleField,
@@ -204,6 +209,8 @@ export const createDefaultGroups = (
             type: 'link',
             href: `/admin/globals/${global.slug}`,
           },
+          //Either custom icon from plugin config, or default Globe icon
+          icon: pluginConfig?.icons?.globals?.[global.slug] || Globe,
           label: extractLocalizedGlobalName(global, currentLang),
         })
       }

@@ -1,1 +1,1 @@
-export { CommandMenuProvider } from '../components/CommandMenuContext.js'
+export { CommandMenuProvider } from '../components/CommandMenuContext'

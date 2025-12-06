@@ -1,9 +1,14 @@
 'use client'
+import type { LucideIcon } from 'lucide-react'
+import type { IconName } from 'lucide-react/dynamic'
 import type {
   AvaibleTranslation,
   CustomTranslationsKeys,
   CustomTranslationsObject,
-} from 'src/translations/index.js'
+} from 'src/translations/index'
+
+import './modal.scss'
+
 import type {
   CommandMenuContextProps,
   CommandMenuGroup,
@@ -11,14 +16,12 @@ import type {
   CommandMenuPage,
   GenericCollectionDocument,
   PluginCommandMenuConfig,
-} from 'src/types.js'
+} from 'src/types'
 
 import { Modal, useConfig, useModal, useTranslation } from '@payloadcms/ui'
-
-import './modal.scss'
-
-import { ChevronLeft, Files, Globe } from 'lucide-react'
-import { useRouter } from 'next/navigation.js'
+import { ChevronLeft } from 'lucide-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { useRouter } from 'next/navigation'
 import {
   createContext,
   Fragment,
@@ -31,8 +34,8 @@ import {
 } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-import { useMutationObserver } from '../hooks/useMutationObserver.js'
-import { createDefaultGroups } from '../utils/index.js'
+import { useMutationObserver } from '../hooks/useMutationObserver'
+import { createDefaultGroups } from '../utils/index'
 import {
   Command,
   CommandEmpty,
@@ -42,7 +45,7 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from './cmdk/index.js'
+} from './cmdk/index'
 
 const MODAL_SLUG = 'command-menu'
 
@@ -142,6 +145,7 @@ const CommandMenuComponent: React.FC<{
               type: 'link',
               href: `/admin/collections/${currentPage.slug}/${doc.id}`,
             },
+            icon: pluginConfig?.submenu?.icons?.[currentPage.slug] ?? undefined,
             label: doc[currentPage.useAsTitle] || doc.id,
           }))
           setSubmenuItems(docs)
@@ -155,7 +159,7 @@ const CommandMenuComponent: React.FC<{
 
     const timeoutId = setTimeout(fetchDocuments, 300)
     return () => clearTimeout(timeoutId)
-  }, [search, currentPage])
+  }, [search, currentPage, pluginConfig?.submenu?.icons])
 
   const handleBack = useCallback(() => {
     setPage('main')
@@ -199,6 +203,9 @@ const CommandMenuComponent: React.FC<{
         useAsTitleLabel: item.useAsTitleLabel || item.useAsTitle || 'id',
       })
       setSearch('')
+      //set isLoadingSubmenu to true to show loading state while fetching
+      setIsLoadingSubmenu(true)
+      setSubmenuItems([])
     },
     [setPage],
   )
@@ -298,7 +305,7 @@ const CommandMenuComponent: React.FC<{
   return (
     <Modal slug={MODAL_SLUG}>
       <div className="command-modal">
-        <Command filter={shouldDisableFilter ? () => 1 : undefined} label="Command Menu">
+        <Command label="Command Menu" shouldFilter={!shouldDisableFilter}>
           {/* Header for submenu navigation */}
           {currentPage !== 'main' && (
             <div className="command__header">
@@ -313,7 +320,9 @@ const CommandMenuComponent: React.FC<{
 
           <CommandInput onValueChange={setSearch} placeholder={placeholder} value={search} />
           <CommandList>
-            <CommandEmpty>{isLoadingSubmenu ? 'Loading...' : 'No results found.'}</CommandEmpty>
+            <CommandEmpty>
+              {isLoadingSubmenu ? t('cmdkPlugin:loading') : t('cmdkPlugin:noResults')}
+            </CommandEmpty>
 
             {/* Main page view */}
             {currentPage === 'main' &&
@@ -334,24 +343,31 @@ const CommandMenuComponent: React.FC<{
                 return (
                   <Fragment key={group.title}>
                     <CommandGroup heading={titleName}>
-                      {group.items.map((item) => (
-                        <TrackedCommandItem
-                          key={item.slug}
-                          onHighlight={() => setHighlightedItem(item)}
-                          onSelect={() => handleSelect(item)}
-                          value={item.slug}
-                        >
-                          {item.type === 'collection' ? (
-                            <Files className="command__item-icon" />
-                          ) : item.type === 'global' ? (
-                            <Globe className="command__item-icon" />
-                          ) : null}
-                          {item.label}
-                          {submenuEnabled && item.type === 'collection' && (
-                            <CommandShortcut>›</CommandShortcut>
-                          )}
-                        </TrackedCommandItem>
-                      ))}
+                      {group.items.map((item) => {
+                        const isDynamicIcon = typeof item.icon === 'string'
+                        const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
+                        return (
+                          <TrackedCommandItem
+                            key={item.slug}
+                            onHighlight={() => setHighlightedItem(item)}
+                            onSelect={() => handleSelect(item)}
+                            value={item.slug}
+                          >
+                            {isDynamicIcon ? (
+                              <DynamicIcon
+                                className="command__item-icon"
+                                name={item.icon as IconName}
+                              />
+                            ) : (
+                              IconComponent && <IconComponent className="command__item-icon" />
+                            )}
+                            {item.label}
+                            {submenuEnabled && item.type === 'collection' && (
+                              <CommandShortcut>›</CommandShortcut>
+                            )}
+                          </TrackedCommandItem>
+                        )
+                      })}
                     </CommandGroup>
                     {isRenderSeparator && <CommandSeparator />}
                   </Fragment>
@@ -373,16 +389,25 @@ const CommandMenuComponent: React.FC<{
 
             {/* Submenu page view */}
             {currentPage !== 'main' &&
-              submenuItems.map((item) => (
-                <TrackedCommandItem
-                  key={item.slug}
-                  onHighlight={() => setHighlightedItem(item)}
-                  onSelect={() => handleSelect(item)}
-                  value={item.slug}
-                >
-                  {item.label}
-                </TrackedCommandItem>
-              ))}
+              submenuItems.map((item) => {
+                const isDynamicIcon = typeof item.icon === 'string'
+                const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
+                return (
+                  <TrackedCommandItem
+                    key={item.slug}
+                    onHighlight={() => setHighlightedItem(item)}
+                    onSelect={() => handleSelect(item)}
+                    value={item.slug}
+                  >
+                    {isDynamicIcon ? (
+                      <DynamicIcon className="command__item-icon" name={item.icon as IconName} />
+                    ) : (
+                      IconComponent && <IconComponent className="command__item-icon" />
+                    )}
+                    {item.label}
+                  </TrackedCommandItem>
+                )
+              })}
           </CommandList>
 
           {/* Footer with dynamic shortcuts */}

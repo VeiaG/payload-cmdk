@@ -9,8 +9,8 @@ import { pluginCommandMenu } from 'plugin-command-menu'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
-import { testEmailAdapter } from './helpers/testEmailAdapter.js'
-import { seed } from './seed.js'
+import { testEmailAdapter } from './helpers/testEmailAdapter'
+import { seed } from './seed'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -153,6 +153,7 @@ const buildConfigWithMemoryDB = async () => {
               type: 'api',
               href: '/api/test-endpoint',
             },
+            icon: 'angry',
             label: {
               en: 'Custom Item 1',
               uk: 'Користувацький пункт 1',
@@ -168,6 +169,7 @@ const buildConfigWithMemoryDB = async () => {
                   type: 'api',
                   href: '/api/another-endpoint',
                 },
+                icon: 'archive',
                 label: {
                   en: 'Custom Item 2',
                   uk: 'Користувацький пункт 2',
@@ -180,9 +182,17 @@ const buildConfigWithMemoryDB = async () => {
             },
           },
         ],
+        icons: {
+          collections: {
+            posts: 'file-text',
+          },
+        },
         submenu: {
           // enabled: false,
-          shortcut: 'enter',
+          // shortcut: 'enter',
+          icons: {
+            posts: 'book-open',
+          },
         },
       }),
     ],
