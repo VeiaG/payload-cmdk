@@ -180,6 +180,10 @@ const buildConfigWithMemoryDB = async () => {
             },
           },
         ],
+        submenu: {
+          // enabled: false,
+          shortcut: 'enter',
+        },
       }),
     ],
     secret: process.env.PAYLOAD_SECRET || 'test-secret_key',

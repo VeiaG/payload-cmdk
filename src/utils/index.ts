@@ -1,4 +1,4 @@
-import type { ClientConfig, LabelFunction } from 'payload'
+import type { ClientConfig, LabelFunction, TextFieldClient } from 'payload'
 import type {
   CommandMenuGroup,
   CommandMenuItem,
@@ -146,6 +146,26 @@ export const createDefaultGroups = (
       }
       const group = groups.find((g) => g.title === groupName)
       if (group) {
+        const useAsTitleField = collection.admin?.useAsTitle || 'id'
+        let useAsTitleFieldLabel: TextFieldClient['label'] | undefined = undefined
+        let useAsTitleLabel: string | undefined = undefined
+        //Only extract useAsTitle label if submenu is enabled
+        if (pluginConfig?.submenu?.enabled !== false) {
+          useAsTitleFieldLabel = (
+            collection?.fields?.find((field) => {
+              if ('name' in field === false) {
+                return null
+              }
+              return field.name === useAsTitleField
+            }) as null | TextFieldClient
+          )?.label
+          //Extract label for useAsTitle field
+          useAsTitleLabel = extractLocalizedValue(
+            typeof useAsTitleFieldLabel === 'function' ? {} : useAsTitleFieldLabel || {},
+            currentLang,
+            useAsTitleField,
+          )
+        }
         group.items.push({
           slug: collection.slug,
           type: 'collection',
@@ -154,7 +174,8 @@ export const createDefaultGroups = (
             href: `/admin/collections/${collection.slug}`,
           },
           label: extractLocalizedCollectionName(collection, currentLang),
-          useAsTitle: collection.admin?.useAsTitle || 'id',
+          useAsTitle: useAsTitleField,
+          useAsTitleLabel: useAsTitleLabel || useAsTitleField,
         })
       }
     })

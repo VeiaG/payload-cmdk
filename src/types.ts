@@ -126,6 +126,14 @@ export interface CommandMenuItem {
    * Defaults to 'id' if not specified.
    */
   useAsTitle?: string
+
+  /**
+   * Label for the field used as title for collection documents.
+   * Only applicable for collection type items.
+   *
+   * Used in submenu search placeholder.
+   */
+  useAsTitleLabel?: string
 }
 
 export interface CommandMenuGroup {
@@ -157,6 +165,10 @@ export type CommandMenuPage =
        * Field name to use as document title
        */
       useAsTitle: string
+      /**
+       * Label for the field used as title
+       */
+      useAsTitleLabel: string
     }
 
 /**

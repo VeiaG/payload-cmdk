@@ -25,9 +25,9 @@ import {
   useState,
 } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { createDefaultGroups } from 'src/utils/index.js'
 
 import { useMutationObserver } from '../hooks/useMutationObserver.js'
+import { createDefaultGroups } from '../utils/index.js'
 import {
   Command,
   CommandEmpty,
@@ -191,6 +191,7 @@ const CommandMenuComponent: React.FC<{
         type: 'collection-search',
         label: item.label,
         useAsTitle: item.useAsTitle || 'id',
+        useAsTitleLabel: item.useAsTitleLabel || item.useAsTitle || 'id',
       })
       setSearch('')
     },
@@ -237,7 +238,12 @@ const CommandMenuComponent: React.FC<{
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [currentPage, handleBack, highlightedItem, submenuEnabled, submenuShortcut, openSubmenu])
 
-  const placeholder = currentPage === 'main' ? 'Search collections, globals...' : 'Search...'
+  const placeholder =
+    currentPage === 'main'
+      ? 'Search collections, globals...'
+      : t('general:searchBy', {
+          label: currentPage.useAsTitleLabel,
+        })
 
   const shouldDisableFilter = currentPage !== 'main'
 
