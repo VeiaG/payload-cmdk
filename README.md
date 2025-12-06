@@ -2,7 +2,7 @@
 
 A powerful command menu plugin for [Payload CMS](https://payloadcms.com) that enhances navigation and accessibility within the admin panel. Quickly search and navigate through collections, globals, and custom actions using keyboard shortcuts.
 
-[screenshot: Command menu open showing collections and globals list]
+![Demo of opening command menu, searching for a collection, and navigating](docs/usage.gif)
 
 ## Features
 
@@ -14,7 +14,6 @@ A powerful command menu plugin for [Payload CMS](https://payloadcms.com) that en
 🌍 **i18n Support** - Built-in English and Ukrainian translations, easily add your own
 🖥️ **Cross-platform** - Optimized shortcuts for both macOS and Windows/Linux
 
-[gif: Demo of opening command menu, searching for a collection, and navigating]
 
 ## Installation
 
@@ -50,7 +49,9 @@ This will:
 - List all collections and globals in the command menu
 - Enable collection submenu search
 
-[screenshot: Search button in the admin panel]
+[Actions button](/doc/position_actions.png)
+
+[Navigation button](/doc/position_nav.png)
 
 ## Configuration
 
@@ -165,7 +166,6 @@ shortcut: ['meta+k', 'ctrl+k']
 shortcut: ['meta+/', 'ctrl+/']
 ```
 
-[screenshot: Search button showing ⌘K on Mac and Ctrl K on Windows]
 
 ### `searchButton`
 
@@ -221,7 +221,7 @@ Configure submenu behavior for searching within collection documents.
 - `shift+enter`: Shift+Enter opens submenu, Enter navigates to collection list
 - `enter`: Enter opens submenu, Shift+Enter navigates to collection list
 
-[gif: Using Shift+Enter to search within a collection]
+![Searching within a collection submenu](docs/searching_in_collection.png)
 
 **Example:**
 
@@ -279,7 +279,7 @@ icons: {
 
 Browse all available icons at [lucide.dev/icons](https://lucide.dev/icons).
 
-[screenshot: Command menu showing different Lucide icons for collections]
+[Icons preview](/docs/icons.png)
 
 ### `customItems`
 
@@ -356,8 +356,6 @@ customItems: [
   },
 ]
 ```
-
-[screenshot: Command menu with custom groups and items]
 
 ### `slugsToIgnore`
 
@@ -466,7 +464,6 @@ All translation keys are under the `cmdkPlugin` namespace:
 | `toSelect` | Footer hint for selecting | "to select" |
 | `toExecute` | Footer hint for API actions | "to execute" |
 
-[screenshot: Command menu footer showing contextual hints]
 
 ## Keyboard Shortcuts
 

@@ -57,6 +57,32 @@ const buildConfigWithMemoryDB = async () => {
             },
             required: true,
           },
+          {
+            name: 'slug',
+            type: 'text',
+            label: 'Slug',
+            required: true,
+          },
+          {
+            name: 'status',
+            type: 'select',
+            defaultValue: 'draft',
+            options: [
+              {
+                label: 'Draft',
+                value: 'draft',
+              },
+              {
+                label: 'Published',
+                value: 'published',
+              },
+            ],
+          },
+          {
+            name: 'category',
+            type: 'relationship',
+            relationTo: 'categories',
+          },
         ],
         labels: {
           plural: {
@@ -70,6 +96,107 @@ const buildConfigWithMemoryDB = async () => {
         },
       },
       {
+        slug: 'pages',
+        admin: {
+          group: {
+            en: 'Content',
+            uk: 'Контент',
+          },
+          useAsTitle: 'title',
+        },
+        fields: [
+          {
+            name: 'title',
+            type: 'text',
+            required: true,
+          },
+          {
+            name: 'slug',
+            type: 'text',
+            required: true,
+          },
+        ],
+        labels: {
+          plural: {
+            en: 'Pages',
+            uk: 'Сторінки',
+          },
+          singular: {
+            en: 'Page',
+            uk: 'Сторінка',
+          },
+        },
+      },
+      {
+        slug: 'categories',
+        admin: {
+          group: {
+            en: 'Content',
+            uk: 'Контент',
+          },
+          useAsTitle: 'name',
+        },
+        fields: [
+          {
+            name: 'name',
+            type: 'text',
+            required: true,
+          },
+          {
+            name: 'slug',
+            type: 'text',
+            required: true,
+          },
+        ],
+        labels: {
+          plural: {
+            en: 'Categories',
+            uk: 'Категорії',
+          },
+          singular: {
+            en: 'Category',
+            uk: 'Категорія',
+          },
+        },
+      },
+      {
+        slug: 'products',
+        admin: {
+          group: 'E-commerce',
+          useAsTitle: 'name',
+        },
+        fields: [
+          {
+            name: 'name',
+            type: 'text',
+            required: true,
+          },
+          {
+            name: 'price',
+            type: 'number',
+            required: true,
+          },
+          {
+            name: 'sku',
+            type: 'text',
+            required: true,
+          },
+        ],
+      },
+      {
+        slug: 'users',
+        admin: {
+          useAsTitle: 'email',
+        },
+        auth: true,
+        fields: [
+          {
+            name: 'name',
+            type: 'text',
+          },
+        ],
+      },
+      {
         slug: 'media',
         admin: {
           group: 'Media',
@@ -78,40 +205,6 @@ const buildConfigWithMemoryDB = async () => {
         upload: {
           staticDir: path.resolve(dirname, 'media'),
         },
-      },
-
-      {
-        slug: 'media2',
-        admin: {
-          group: 'Media',
-        },
-        fields: [],
-        labels: {
-          plural: 'Media 2',
-          singular: 'Media 2',
-        },
-      },
-      //Some extra collections to test command menu grouping
-      {
-        slug: 'test-collection',
-        admin: {
-          group: {
-            en: 'Content',
-            uk: 'Не контент', //Testing different group name resolution
-          },
-        },
-        fields: [],
-      },
-      {
-        slug: 'another-collection',
-        admin: {
-          group: 'Tests',
-        },
-        fields: [],
-      },
-      {
-        slug: 'ungrouped-collection',
-        fields: [],
       },
     ],
     db: mongooseAdapter({
@@ -147,51 +240,73 @@ const buildConfigWithMemoryDB = async () => {
       payloadCmdk({
         customItems: [
           {
-            slug: 'custom-item-1',
+            slug: 'view-site',
             type: 'item',
             action: {
-              type: 'api',
-              href: '/api/test-endpoint',
+              type: 'link',
+              href: 'https://payload.veiag.dev',
             },
-            icon: 'angry',
+            icon: 'external-link',
             label: {
-              en: 'Custom Item 1',
-              uk: 'Користувацький пункт 1',
+              en: 'View Site',
+              uk: 'Переглянути сайт',
             },
           },
           {
             type: 'group',
             items: [
               {
-                slug: 'custom-item-2',
+                slug: 'clear-cache',
                 type: 'item',
                 action: {
                   type: 'api',
-                  href: '/api/another-endpoint',
+                  href: '/api/cache/clear',
                 },
-                icon: 'archive',
+                icon: 'trash-2',
                 label: {
-                  en: 'Custom Item 2',
-                  uk: 'Користувацький пункт 2',
+                  en: 'Clear Cache',
+                  uk: 'Очистити кеш',
+                },
+              },
+              {
+                slug: 'docs',
+                type: 'item',
+                action: {
+                  type: 'link',
+                  href: 'https://payloadcms.com/docs',
+                },
+                icon: 'book-open',
+                label: {
+                  en: 'Documentation',
+                  uk: 'Документація',
                 },
               },
             ],
             title: {
-              en: 'Content',
-              uk: 'Контент',
+              en: 'Quick Actions',
+              uk: 'Швидкі дії',
             },
           },
         ],
         icons: {
           collections: {
-            posts: 'file-text',
+            categories: 'folder',
+            media: 'image',
+            pages: 'file-text',
+            posts: 'newspaper',
+            products: 'shopping-cart',
+            users: 'users',
+          },
+          globals: {
+            'footer-settings': 'layout',
+            'site-settings': 'settings',
           },
         },
         submenu: {
-          // enabled: false,
-          // shortcut: 'enter',
           icons: {
-            posts: 'book-open',
+            pages: 'file',
+            posts: 'file-text',
+            products: 'package',
           },
         },
       }),
