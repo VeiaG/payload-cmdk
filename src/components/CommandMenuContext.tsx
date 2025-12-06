@@ -328,9 +328,16 @@ const CommandMenuComponent: React.FC<{
 
   const footerShortcuts = getFooterText()
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Close modal only if clicking the backdrop (not the command itself)
+    if (e.target === e.currentTarget) {
+      closeMenu()
+    }
+  }
+
   return (
     <Modal slug={MODAL_SLUG}>
-      <div className="command-modal">
+      <div className="command-modal" onClick={handleBackdropClick}>
         <Command label="Command Menu" shouldFilter={!shouldDisableFilter}>
           {/* Header for submenu navigation */}
           {currentPage !== 'main' && (
