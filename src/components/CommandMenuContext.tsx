@@ -87,6 +87,7 @@ const CommandMenuComponent: React.FC<{
   const [search, setSearch] = useState('')
   const [submenuItems, setSubmenuItems] = useState<CommandMenuItem[]>([])
   const [isLoadingSubmenu, setIsLoadingSubmenu] = useState(false)
+  const [isMac, setIsMac] = useState(false)
 
   const commandListRef = useRef<HTMLDivElement>(null)
 
@@ -94,8 +95,32 @@ const CommandMenuComponent: React.FC<{
   const router = useRouter()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
 
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
+  }, [])
+
   const submenuEnabled = pluginConfig?.submenu?.enabled !== false
   const submenuShortcut = pluginConfig?.submenu?.shortcut || 'shift+enter'
+
+  const formatShortcutKey = (key: string): string => {
+    // Handle compound shortcuts like "Shift + Enter"
+    const parts = key.split('+').map((part) => part.trim())
+    return parts
+      .map((part) => {
+        const lowerPart = part.toLowerCase()
+        if (lowerPart === 'ctrl' || lowerPart === 'cmd') {
+          return isMac ? '⌘' : 'Ctrl'
+        }
+        if (lowerPart === 'shift') {
+          return isMac ? '⇧' : 'Shift'
+        }
+        if (lowerPart === 'alt') {
+          return isMac ? '⌥' : 'Alt'
+        }
+        return part
+      })
+      .join(isMac ? '' : ' + ')
+  }
 
   // Debounced search for submenu
   useEffect(() => {
@@ -419,7 +444,7 @@ const CommandMenuComponent: React.FC<{
             <div className="command__footer">
               {footerShortcuts.map((shortcut, index) => (
                 <span key={index}>
-                  <kbd>{shortcut.key}</kbd> {t(`cmdkPlugin:${shortcut.action}`)}
+                  <kbd>{formatShortcutKey(shortcut.key)}</kbd> {t(`cmdkPlugin:${shortcut.action}`)}
                 </span>
               ))}
             </div>
