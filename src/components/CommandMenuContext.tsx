@@ -337,6 +337,7 @@ const CommandMenuComponent: React.FC<{
 
   return (
     <Modal slug={MODAL_SLUG}>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="command-modal" onClick={handleBackdropClick}>
         <Command label="Command Menu" shouldFilter={!shouldDisableFilter}>
           {/* Header for submenu navigation */}
