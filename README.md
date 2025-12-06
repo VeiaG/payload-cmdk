@@ -49,10 +49,6 @@ This will:
 - List all collections and globals in the command menu
 - Enable collection submenu search
 
-![Actions button](/docs/position_actions.png)
-
-![Navigation button](/docs/position_nav.png)
-
 ## Configuration
 
 ### Full Configuration Example
@@ -190,6 +186,15 @@ searchButton: {
 // Hide search button
 searchButton: false
 ```
+Actions button position:
+
+![Actions button](/docs/position_actions.png)
+
+
+Navigation button position:
+
+![Navigation button](/docs/position_nav.png)
+
 
 ### `blurBg`
 
