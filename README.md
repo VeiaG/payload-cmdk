@@ -49,9 +49,9 @@ This will:
 - List all collections and globals in the command menu
 - Enable collection submenu search
 
-[Actions button](/doc/position_actions.png)
+![Actions button](/docs/position_actions.png)
 
-[Navigation button](/doc/position_nav.png)
+![Navigation button](/docs/position_nav.png)
 
 ## Configuration
 
@@ -279,7 +279,7 @@ icons: {
 
 Browse all available icons at [lucide.dev/icons](https://lucide.dev/icons).
 
-[Icons preview](/docs/icons.png)
+![Icons preview](/docs/icons.png)
 
 ### `customItems`
 
