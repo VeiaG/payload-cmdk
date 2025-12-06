@@ -1,0 +1,58 @@
+/////////////////////////////
+// COMMAND MODAL STYLES
+// Wrapper class to style command inside Payload Modal
+/////////////////////////////
+
+@layer payload {
+  .command-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    // Center the command
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: calc(var(--base) * 6) calc(var(--base) * 1);
+
+    // Dark background with pseudo element
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--theme-overlay);
+      backdrop-filter: blur(4px);
+      z-index: -1;
+    }
+
+    @media (max-width: 768px) {
+      padding: calc(var(--base) * 2) calc(var(--base) * 0.5);
+      align-items: center;
+    }
+
+    // Command container inside modal
+    .command {
+      width: 100%;
+      max-width: 640px;
+      max-height: 500px;
+      
+      @media (max-width: 768px) {
+        max-width: 100%;
+        max-height: 70vh;
+      }
+    }
+  }
+
+  // Dark theme
+  html[data-theme='dark'] {
+    .command-modal {
+      &::before {
+        background: rgba(0, 0, 0, 0.75);
+      }
+    }
+  }
+}

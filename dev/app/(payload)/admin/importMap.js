@@ -1,9 +1,5 @@
-import { BeforeDashboardClient as BeforeDashboardClient_fc6e7dd366b9e2c8ce77d31252122343 } from 'plugin-command-menu/client'
-import { BeforeDashboardServer as BeforeDashboardServer_c4406fcca100b2553312c5a3d7520a3f } from 'plugin-command-menu/rsc'
+import { CommandMenuProvider as CommandMenuProvider_784caaf339dc846eb1ebee0e0b146c5b } from 'plugin-command-menu/client'
 
 export const importMap = {
-  'plugin-command-menu/client#BeforeDashboardClient':
-    BeforeDashboardClient_fc6e7dd366b9e2c8ce77d31252122343,
-  'plugin-command-menu/rsc#BeforeDashboardServer':
-    BeforeDashboardServer_c4406fcca100b2553312c5a3d7520a3f,
+  "plugin-command-menu/client#CommandMenuProvider": CommandMenuProvider_784caaf339dc846eb1ebee0e0b146c5b
 }

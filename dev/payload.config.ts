@@ -1,5 +1,7 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { en } from '@payloadcms/translations/languages/en'
+import { uk } from '@payloadcms/translations/languages/uk'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -38,14 +40,67 @@ const buildConfigWithMemoryDB = async () => {
     collections: [
       {
         slug: 'posts',
+        admin: {
+          group: {
+            en: 'Content',
+            uk: 'Контент',
+          },
+        },
         fields: [],
+        labels: {
+          plural: {
+            en: 'Posts',
+            uk: 'Публікації',
+          },
+          singular: {
+            en: 'Post',
+            uk: 'Публікація',
+          },
+        },
       },
       {
         slug: 'media',
+        admin: {
+          group: 'Media',
+        },
         fields: [],
         upload: {
           staticDir: path.resolve(dirname, 'media'),
         },
+      },
+
+      {
+        slug: 'media2',
+        admin: {
+          group: 'Media',
+        },
+        fields: [],
+        labels: {
+          plural: 'Media 2',
+          singular: 'Media 2',
+        },
+      },
+      //Some extra collections to test command menu grouping
+      {
+        slug: 'test-collection',
+        admin: {
+          group: {
+            en: 'Content',
+            uk: 'Не контент', //Testing different group name resolution
+          },
+        },
+        fields: [],
+      },
+      {
+        slug: 'another-collection',
+        admin: {
+          group: 'Tests',
+        },
+        fields: [],
+      },
+      {
+        slug: 'ungrouped-collection',
+        fields: [],
       },
     ],
     db: mongooseAdapter({
@@ -54,14 +109,66 @@ const buildConfigWithMemoryDB = async () => {
     }),
     editor: lexicalEditor(),
     email: testEmailAdapter,
+    globals: [
+      {
+        slug: 'site-settings',
+        fields: [],
+      },
+      {
+        slug: 'footer-settings',
+        admin: {
+          group: 'Settings',
+        },
+        fields: [],
+      },
+    ],
+    i18n: {
+      fallbackLanguage: 'en',
+      supportedLanguages: {
+        en,
+        uk,
+      },
+    },
     onInit: async (payload) => {
       await seed(payload)
     },
     plugins: [
       pluginCommandMenu({
-        collections: {
-          posts: true,
-        },
+        customItems: [
+          {
+            slug: 'custom-item-1',
+            type: 'item',
+            action: {
+              type: 'api',
+              href: '/api/test-endpoint',
+            },
+            label: {
+              en: 'Custom Item 1',
+              uk: 'Користувацький пункт 1',
+            },
+          },
+          {
+            type: 'group',
+            items: [
+              {
+                slug: 'custom-item-2',
+                type: 'item',
+                action: {
+                  type: 'api',
+                  href: '/api/another-endpoint',
+                },
+                label: {
+                  en: 'Custom Item 2',
+                  uk: 'Користувацький пункт 2',
+                },
+              },
+            ],
+            title: {
+              en: 'Content',
+              uk: 'Контент',
+            },
+          },
+        ],
       }),
     ],
     secret: process.env.PAYLOAD_SECRET || 'test-secret_key',
