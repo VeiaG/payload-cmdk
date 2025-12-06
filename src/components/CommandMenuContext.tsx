@@ -70,7 +70,7 @@ const CommandMenuContext = createContext<CommandMenuContextType>({
   toggleMenu: () => {},
 })
 
-const useCommandMenu = () => {
+export const useCommandMenu = () => {
   const context = useContext(CommandMenuContext)
   return context
 }

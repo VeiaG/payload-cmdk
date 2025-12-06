@@ -65,6 +65,20 @@ export type PluginCommandMenuConfig = {
     }
   }
   /**
+   * Configuration for the search button in the admin navigation.
+   * Set to false to disable the search button.
+   * @default { position: 'nav' }
+   */
+  searchButton?:
+    | {
+        /**
+         * Position of the search button in the admin navigation.
+         * @default 'nav'
+         */
+        position?: 'actions' | 'nav'
+      }
+    | false
+  /**
    * Keyboard shortcut to open the command menu.
    * (sadly, ctrl+k opens browser search in chrome)
    * @default 'ctrl+shift+k'

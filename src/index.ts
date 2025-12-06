@@ -34,6 +34,39 @@ export const pluginCommandMenu =
       path: 'plugin-command-menu/client#CommandMenuProvider',
     })
 
+    if (pluginOptions.searchButton !== false) {
+      let searchButtonPosition = 'nav'
+      if (pluginOptions.searchButton && pluginOptions.searchButton.position) {
+        searchButtonPosition = pluginOptions.searchButton.position
+      }
+      if (searchButtonPosition === 'nav') {
+        if (!config.admin.components.beforeNavLinks) {
+          config.admin.components.beforeNavLinks = []
+        }
+        config.admin.components.beforeNavLinks = [
+          {
+            clientProps: {
+              position: pluginOptions.searchButton?.position || 'nav',
+              shortcut: pluginOptions.shortcut || 'ctrl+shift+k',
+            },
+            path: 'plugin-command-menu/client#SearchButton',
+          },
+          ...config.admin.components.beforeNavLinks,
+        ]
+      } else {
+        if (!config.admin.components.actions) {
+          config.admin.components.actions = []
+        }
+        config.admin.components.actions.push({
+          clientProps: {
+            position: pluginOptions.searchButton?.position || 'actions',
+            shortcut: pluginOptions.shortcut || 'ctrl+shift+k',
+          },
+          path: 'plugin-command-menu/client#SearchButton',
+        })
+      }
+    }
+
     //Adding translations
     if (!config.i18n) {
       config.i18n = {}
