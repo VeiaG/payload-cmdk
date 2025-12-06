@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@payloadcms/translations':
-        specifier: ^3.66.0
+        specifier: ^3.37.0
         version: 3.66.0
       cmdk:
         specifier: ^1.1.1

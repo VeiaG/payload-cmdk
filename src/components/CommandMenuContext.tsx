@@ -34,7 +34,6 @@ import {
 } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-import { useMutationObserver } from '../hooks/useMutationObserver'
 import { createDefaultGroups } from '../utils/index'
 import {
   Command,
@@ -76,31 +75,10 @@ const useCommandMenu = () => {
   return context
 }
 
-// Wrapper component that tracks when it becomes highlighted
-const TrackedCommandItem: React.FC<
-  {
-    onHighlight?: () => void
-  } & React.ComponentProps<typeof CommandItem>
-> = ({ children, onHighlight, ...props }) => {
-  const ref = useRef<HTMLDivElement>(null)
+const ITEM_SELECTOR = `[cmdk-item=""]`
 
-  useMutationObserver(ref, (mutations) => {
-    mutations.forEach((mutation) => {
-      if (
-        mutation.type === 'attributes' &&
-        mutation.attributeName === 'aria-selected' &&
-        ref.current?.getAttribute('aria-selected') === 'true'
-      ) {
-        onHighlight?.()
-      }
-    })
-  })
-
-  return (
-    <CommandItem ref={ref} {...props}>
-      {children}
-    </CommandItem>
-  )
+function getSelectedElement(containerRef: React.RefObject<HTMLElement | null>) {
+  return containerRef.current?.querySelector(`${ITEM_SELECTOR}[aria-selected="true"]`)
 }
 
 const CommandMenuComponent: React.FC<{
@@ -109,7 +87,8 @@ const CommandMenuComponent: React.FC<{
   const [search, setSearch] = useState('')
   const [submenuItems, setSubmenuItems] = useState<CommandMenuItem[]>([])
   const [isLoadingSubmenu, setIsLoadingSubmenu] = useState(false)
-  const [highlightedItem, setHighlightedItem] = useState<CommandMenuItem | null>(null)
+
+  const commandListRef = useRef<HTMLDivElement>(null)
 
   const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
   const router = useRouter()
@@ -229,8 +208,12 @@ const CommandMenuComponent: React.FC<{
       }
 
       // Enter/Shift+Enter handling for collection submenu
-      if (e.key === 'Enter' && highlightedItem && currentPage === 'main') {
-        if (submenuEnabled && highlightedItem.type === 'collection') {
+      if (e.key === 'Enter' && currentPage === 'main') {
+        const selectedElement = getSelectedElement(commandListRef)
+        const itemType = selectedElement?.getAttribute('data-item-type')
+        const itemSlug = selectedElement?.getAttribute('data-value')
+
+        if (submenuEnabled && itemType === 'collection' && itemSlug) {
           const isShiftPressed = e.shiftKey
           const shouldOpenSubmenu =
             (submenuShortcut === 'shift+enter' && isShiftPressed) ||
@@ -239,7 +222,12 @@ const CommandMenuComponent: React.FC<{
           if (shouldOpenSubmenu) {
             e.preventDefault()
             e.stopPropagation()
-            openSubmenu(highlightedItem)
+
+            // Find the item in groups
+            const item = groups.flatMap((g) => g.items).find((i) => i.slug === itemSlug)
+            if (item) {
+              openSubmenu(item)
+            }
             return
           }
         }
@@ -248,7 +236,7 @@ const CommandMenuComponent: React.FC<{
 
     document.addEventListener('keydown', handleKeyDown, true)
     return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [currentPage, handleBack, highlightedItem, submenuEnabled, submenuShortcut, openSubmenu])
+  }, [currentPage, handleBack, submenuEnabled, submenuShortcut, openSubmenu, groups])
 
   const placeholder =
     currentPage === 'main'
@@ -259,11 +247,15 @@ const CommandMenuComponent: React.FC<{
 
   const shouldDisableFilter = currentPage !== 'main'
 
-  // Dynamic footer text based on highlighted item
+  // Dynamic footer text based on highlighted item from DOM
   const getFooterText = () => {
-    if (!highlightedItem) {
+    const selectedElement = getSelectedElement(commandListRef)
+    if (!selectedElement) {
       return null
     }
+
+    const itemType = selectedElement.getAttribute('data-item-type')
+    const actionType = selectedElement.getAttribute('data-action-type')
 
     const shortcuts: {
       action: AvaibleTranslation
@@ -272,7 +264,7 @@ const CommandMenuComponent: React.FC<{
 
     if (currentPage === 'main') {
       // For collections, show both submenu and navigation shortcuts
-      if (submenuEnabled && highlightedItem.type === 'collection') {
+      if (submenuEnabled && itemType === 'collection') {
         if (submenuShortcut === 'shift+enter') {
           shortcuts.push({ action: 'toNavigate', key: 'Enter' })
           shortcuts.push({ action: 'toSearchIn', key: 'Shift + Enter' })
@@ -283,9 +275,9 @@ const CommandMenuComponent: React.FC<{
       } else {
         // For non-collections, show appropriate action
         let actionText: AvaibleTranslation = 'toSelect'
-        if (highlightedItem.action.type === 'link') {
+        if (actionType === 'link') {
           actionText = 'toNavigate'
-        } else if (highlightedItem.action.type === 'api') {
+        } else if (actionType === 'api') {
           actionText = 'toExecute'
         }
 
@@ -293,12 +285,21 @@ const CommandMenuComponent: React.FC<{
       }
     } else {
       // In submenu, just show Enter to open/navigate
-      const actionText = highlightedItem.action.type === 'link' ? 'toOpen' : 'toSelect'
+      const actionText = actionType === 'link' ? 'toOpen' : 'toSelect'
       shortcuts.push({ action: actionText, key: 'Enter' })
     }
 
     return shortcuts
   }
+
+  // Force re-render when selection might change - we'll use a key to force footer updates
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate((n) => n + 1)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [])
 
   const footerShortcuts = getFooterText()
 
@@ -319,7 +320,7 @@ const CommandMenuComponent: React.FC<{
           )}
 
           <CommandInput onValueChange={setSearch} placeholder={placeholder} value={search} />
-          <CommandList>
+          <CommandList ref={commandListRef}>
             <CommandEmpty>
               {isLoadingSubmenu ? t('cmdkPlugin:loading') : t('cmdkPlugin:noResults')}
             </CommandEmpty>
@@ -347,9 +348,10 @@ const CommandMenuComponent: React.FC<{
                         const isDynamicIcon = typeof item.icon === 'string'
                         const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
                         return (
-                          <TrackedCommandItem
+                          <CommandItem
+                            data-action-type={item.action.type}
+                            data-item-type={item.type}
                             key={item.slug}
-                            onHighlight={() => setHighlightedItem(item)}
                             onSelect={() => handleSelect(item)}
                             value={item.slug}
                           >
@@ -365,7 +367,7 @@ const CommandMenuComponent: React.FC<{
                             {submenuEnabled && item.type === 'collection' && (
                               <CommandShortcut>›</CommandShortcut>
                             )}
-                          </TrackedCommandItem>
+                          </CommandItem>
                         )
                       })}
                     </CommandGroup>
@@ -377,14 +379,15 @@ const CommandMenuComponent: React.FC<{
             {/* Stray items on main page */}
             {currentPage === 'main' &&
               items?.map((item) => (
-                <TrackedCommandItem
+                <CommandItem
+                  data-action-type={item.action.type}
+                  data-item-type={item.type}
                   key={item.slug}
-                  onHighlight={() => setHighlightedItem(item)}
                   onSelect={() => handleSelect(item)}
                   value={item.slug}
                 >
                   {item.label}
-                </TrackedCommandItem>
+                </CommandItem>
               ))}
 
             {/* Submenu page view */}
@@ -393,9 +396,10 @@ const CommandMenuComponent: React.FC<{
                 const isDynamicIcon = typeof item.icon === 'string'
                 const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
                 return (
-                  <TrackedCommandItem
+                  <CommandItem
+                    data-action-type={item.action.type}
+                    data-item-type={item.type}
                     key={item.slug}
-                    onHighlight={() => setHighlightedItem(item)}
                     onSelect={() => handleSelect(item)}
                     value={item.slug}
                   >
@@ -405,7 +409,7 @@ const CommandMenuComponent: React.FC<{
                       IconComponent && <IconComponent className="command__item-icon" />
                     )}
                     {item.label}
-                  </TrackedCommandItem>
+                  </CommandItem>
                 )
               })}
           </CommandList>

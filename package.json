@@ -118,7 +118,7 @@
   },
   "registry": "https://registry.npmjs.org/",
   "dependencies": {
-    "@payloadcms/translations": "^3.66.0",
+    "@payloadcms/translations": "^3.37.0",
     "cmdk": "^1.1.1",
     "lucide-react": "^0.556.0",
     "react-hotkeys-hook": "^5.2.1"
