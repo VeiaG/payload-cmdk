@@ -4,7 +4,7 @@ import type { PluginCommandMenuConfig } from './types'
 
 import { commandPluginTranslations } from './translations'
 
-export const pluginCommandMenu =
+export const payloadCmdk =
   (pluginOptions: PluginCommandMenuConfig) =>
   (config: Config): Config => {
     /**
@@ -31,7 +31,7 @@ export const pluginCommandMenu =
       clientProps: {
         pluginConfig: pluginOptions,
       },
-      path: 'plugin-command-menu/client#CommandMenuProvider',
+      path: '@veiag/payload-cmdk/client#CommandMenuProvider',
     })
 
     if (pluginOptions.searchButton !== false) {
@@ -49,7 +49,7 @@ export const pluginCommandMenu =
               position: pluginOptions.searchButton?.position || 'nav',
               shortcut: pluginOptions.shortcut || ['meta+k', 'ctrl+k'],
             },
-            path: 'plugin-command-menu/client#SearchButton',
+            path: '@veiag/payload-cmdk/client#SearchButton',
           },
           ...config.admin.components.beforeNavLinks,
         ]
@@ -62,7 +62,7 @@ export const pluginCommandMenu =
             position: pluginOptions.searchButton?.position || 'actions',
             shortcut: pluginOptions.shortcut || ['meta+k', 'ctrl+k'],
           },
-          path: 'plugin-command-menu/client#SearchButton',
+          path: '@veiag/payload-cmdk/client#SearchButton',
         })
       }
     }

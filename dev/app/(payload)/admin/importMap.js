@@ -1,7 +1,7 @@
-import { SearchButton as SearchButton_784caaf339dc846eb1ebee0e0b146c5b } from 'plugin-command-menu/client'
-import { CommandMenuProvider as CommandMenuProvider_784caaf339dc846eb1ebee0e0b146c5b } from 'plugin-command-menu/client'
+import { SearchButton as SearchButton_3bf5d3e334c5eaf4f0d216451590d3c2 } from '@veiag/payload-cmdk/client'
+import { CommandMenuProvider as CommandMenuProvider_3bf5d3e334c5eaf4f0d216451590d3c2 } from '@veiag/payload-cmdk/client'
 
 export const importMap = {
-  "plugin-command-menu/client#SearchButton": SearchButton_784caaf339dc846eb1ebee0e0b146c5b,
-  "plugin-command-menu/client#CommandMenuProvider": CommandMenuProvider_784caaf339dc846eb1ebee0e0b146c5b
+  "@veiag/payload-cmdk/client#SearchButton": SearchButton_3bf5d3e334c5eaf4f0d216451590d3c2,
+  "@veiag/payload-cmdk/client#CommandMenuProvider": CommandMenuProvider_3bf5d3e334c5eaf4f0d216451590d3c2
 }

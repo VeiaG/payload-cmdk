@@ -16,20 +16,12 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@payload-config": [
-        "./payload.config.ts"
-      ],
-      "plugin-command-menu": [
-        "../src/index.ts"
-      ],
-      "plugin-command-menu/client": [
-        "../src/exports/client.ts"
-      ],
-      "plugin-command-menu/rsc": [
-        "../src/exports/rsc.ts"
-      ]
+      "@payload-config": ["./payload.config.ts"],
+      "@veiag/payload-cmdk": ["../src/index.ts"],
+      "@veiag/payload-cmdk/client": ["../src/exports/client.ts"],
+      "@veiag/payload-cmdk/rsc": ["../src/exports/rsc.ts"]
     },
     "noEmit": true,
-    "emitDeclarationOnly": false,
+    "emitDeclarationOnly": false
   }
 }

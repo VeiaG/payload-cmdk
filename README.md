@@ -1,218 +1,598 @@
-# Payload Plugin Template
+# Payload CMDK
 
-A template repo to create a [Payload CMS](https://payloadcms.com) plugin.
+A powerful command menu plugin for [Payload CMS](https://payloadcms.com) that enhances navigation and accessibility within the admin panel. Quickly search and navigate through collections, globals, and custom actions using keyboard shortcuts.
 
-Payload is built with a robust infrastructure intended to support Plugins with ease. This provides a simple, modular, and reusable way for developers to extend the core capabilities of Payload.
+[screenshot: Command menu open showing collections and globals list]
 
-To build your own Payload plugin, all you need is:
+## Features
 
-- An understanding of the basic Payload concepts
-- And some JavaScript/Typescript experience
+✨ **Quick Search** - Instantly search across all collections and globals
+⌨️ **Keyboard Shortcuts** - Fully customizable keyboard shortcuts powered by [react-hotkeys-hook](https://react-hotkeys-hook.vercel.app/docs/intro)
+🔍 **Collection Submenu** - Search within collection documents by their title field
+🎨 **Custom Icons** - Use any [Lucide icon](https://lucide.dev/icons) for collections and globals
+🎯 **Custom Items** - Add custom actions and menu groups
+🌍 **i18n Support** - Built-in English and Ukrainian translations, easily add your own
+🖥️ **Cross-platform** - Optimized shortcuts for both macOS and Windows/Linux
 
-## Background
+[gif: Demo of opening command menu, searching for a collection, and navigating]
 
-Here is a short recap on how to integrate plugins with Payload, to learn more visit the [plugin overview page](https://payloadcms.com/docs/plugins/overview).
+## Installation
 
-### How to install a plugin
+```bash
+npm install @veiag/payload-cmdk
+# or
+yarn add @veiag/payload-cmdk
+# or
+pnpm add @veiag/payload-cmdk
+```
 
-To install any plugin, simply add it to your payload.config() in the Plugin array.
+## Quick Start
 
-```ts
-import myPlugin from 'my-plugin'
+The plugin works out of the box with minimal configuration:
 
-export const config = buildConfig({
+```typescript
+import { payloadCmdk } from '@veiag/payload-cmdk'
+import { buildConfig } from 'payload'
+
+export default buildConfig({
+  // ... your config
   plugins: [
-    // You can pass options to the plugin
-    myPlugin({
-      enabled: true,
+    payloadCmdk({
+      // Plugin works without any options!
     }),
   ],
 })
 ```
 
-### Initialization
+This will:
+- Add a search button to the admin panel
+- Enable `⌘K` (Mac) / `Ctrl+K` (Windows/Linux) keyboard shortcut
+- List all collections and globals in the command menu
+- Enable collection submenu search
 
-The initialization process goes in the following order:
+[screenshot: Search button in the admin panel]
 
-1. Incoming config is validated
-2. **Plugins execute**
-3. Default options are integrated
-4. Sanitization cleans and validates data
-5. Final config gets initialized
+## Configuration
 
-## Building the Plugin
+### Full Configuration Example
 
-When you build a plugin, you are purely building a feature for your project and then abstracting it outside of the project.
+```typescript
+import { payloadCmdk } from '@veiag/payload-cmdk'
+import { buildConfig } from 'payload'
 
-### Template Files
+export default buildConfig({
+  plugins: [
+    payloadCmdk({
+      // Keyboard shortcut to open the menu
+      shortcut: ['meta+k', 'ctrl+k'], // Default
 
-In the Payload [plugin template](https://github.com/payloadcms/payload/tree/main/templates/plugin), you will see a common file structure that is used across all plugins:
+      // Search button configuration
+      searchButton: {
+        position: 'actions', // 'actions' | 'nav'
+      },
 
-1. root folder
-2. /src folder
-3. /dev folder
+      // Backdrop blur effect
+      blurBg: true, // Default
 
-#### Root
+      // Collection submenu configuration
+      submenu: {
+        enabled: true, // Default
+        shortcut: 'shift+enter', // 'shift+enter' | 'enter'
+        icons: {
+          posts: 'file-text',
+          users: 'user',
+        },
+      },
 
-In the root folder, you will see various files that relate to the configuration of the plugin. We set up our environment in a similar manner in Payload core and across other projects, so hopefully these will look familiar:
+      // Custom icons for collections and globals
+      icons: {
+        collections: {
+          posts: 'file-text',
+          pages: 'file',
+          media: 'image',
+          users: 'users',
+        },
+        globals: {
+          settings: 'settings',
+          navigation: 'menu',
+        },
+      },
 
-- **README**.md\* - This contains instructions on how to use the template. When you are ready, update this to contain instructions on how to use your Plugin.
-- **package**.json\* - Contains necessary scripts and dependencies. Overwrite the metadata in this file to describe your Plugin.
-- .**eslint**.config.js - Eslint configuration for reporting on problematic patterns.
-- .**gitignore** - List specific untracked files to omit from Git.
-- .**prettierrc**.json - Configuration for Prettier code formatting.
-- **tsconfig**.json - Configures the compiler options for TypeScript
-- .**swcrc** - Configuration for SWC, a fast compiler that transpiles and bundles TypeScript.
-- **vitest**.config.js - Config file for Vitest, defining how tests are run and how modules are resolved
+      // Collections/globals to ignore
+      slugsToIgnore: ['payload-migrations', 'payload-preferences'],
 
-**IMPORTANT\***: You will need to modify these files.
+      // Custom menu items
+      customItems: [
+        {
+          type: 'group',
+          title: 'Quick Actions',
+          items: [
+            {
+              type: 'item',
+              slug: 'view-site',
+              label: 'View Site',
+              icon: 'external-link',
+              action: {
+                type: 'link',
+                href: 'https://your-site.com',
+              },
+            },
+            {
+              type: 'item',
+              slug: 'clear-cache',
+              label: 'Clear Cache',
+              icon: 'trash-2',
+              action: {
+                type: 'api',
+                method: 'POST',
+                href: '/api/cache/clear',
+              },
+            },
+          ],
+        },
+      ],
 
-#### Dev
-
-In the dev folder, you’ll find a basic payload project, created with `npx create-payload-app` and the blank template.
-
-**IMPORTANT**: Make a copy of the `.env.example` file and rename it to `.env`. Update the `DATABASE_URI` to match the database you are using and your plugin name. Update `PAYLOAD_SECRET` to a unique string.
-**You will not be able to run `pnpm/yarn dev` until you have created this `.env` file.**
-
-`myPlugin` has already been added to the `payload.config()` file in this project.
-
-```ts
-plugins: [
-  myPlugin({
-    collections: {
-      posts: true,
-    },
-  }),
-]
-```
-
-Later when you rename the plugin or add additional options, **make sure to update it here**.
-
-You may wish to add collections or expand the test project depending on the purpose of your plugin. Just make sure to keep this dev environment as simplified as possible - users should be able to install your plugin without additional configuration required.
-
-When you’re ready to start development, initiate the project with `pnpm/npm/yarn dev` and pull up [http://localhost:3000](http://localhost:3000) in your browser.
-
-#### Src
-
-Now that we have our environment setup and we have a dev project ready to - it’s time to build the plugin!
-
-**index.ts**
-
-The essence of a Payload plugin is simply to extend the payload config - and that is exactly what we are doing in this file.
-
-```ts
-export const myPlugin =
-  (pluginOptions: MyPluginConfig) =>
-  (config: Config): Config => {
-    // do cool stuff with the config here
-
-    return config
-  }
-```
-
-First, we receive the existing payload config along with any plugin options.
-
-From here, you can extend the config as you wish.
-
-Finally, you return the config and that is it!
-
-##### Spread Syntax
-
-Spread syntax (or the spread operator) is a feature in JavaScript that uses the dot notation **(...)** to spread elements from arrays, strings, or objects into various contexts.
-
-We are going to use spread syntax to allow us to add data to existing arrays without losing the existing data. It is crucial to spread the existing data correctly – else this can cause adverse behavior and conflicts with Payload config and other plugins.
-
-Let’s say you want to build a plugin that adds a new collection:
-
-```ts
-config.collections = [
-  ...(config.collections || []),
-  // Add additional collections here
-]
-```
-
-First we spread the `config.collections` to ensure that we don’t lose the existing collections, then you can add any additional collections just as you would in a regular payload config.
-
-This same logic is applied to other properties like admin, hooks, globals:
-
-```ts
-config.globals = [
-  ...(config.globals || []),
-  // Add additional globals here
-]
-
-config.hooks = {
-  ...(incomingConfig.hooks || {}),
-  // Add additional hooks here
-}
-```
-
-Some properties will be slightly different to extend, for instance the onInit property:
-
-```ts
-import { onInitExtension } from './onInitExtension' // example file
-
-config.onInit = async (payload) => {
-  if (incomingConfig.onInit) await incomingConfig.onInit(payload)
-  // Add additional onInit code by defining an onInitExtension function
-  onInitExtension(pluginOptions, payload)
-}
-```
-
-If you wish to add to the onInit, you must include the **async/await**. We don’t use spread syntax in this case, instead you must await the existing `onInit` before running additional functionality.
-
-In the template, we have stubbed out some addition `onInit` actions that seeds in a document to the `plugin-collection`, you can use this as a base point to add more actions - and if not needed, feel free to delete it.
-
-##### Types.ts
-
-If your plugin has options, you should define and provide types for these options.
-
-```ts
-export type MyPluginConfig = {
-  /**
-   * List of collections to add a custom field
-   */
-  collections?: Partial<Record<CollectionSlug, true>>
-  /**
-   * Disable the plugin
-   */
-  disabled?: boolean
-}
-```
-
-If possible, include JSDoc comments to describe the options and their types. This allows a developer to see details about the options in their editor.
-
-##### Testing
-
-Having a test suite for your plugin is essential to ensure quality and stability. **Vitest** is a fast, modern testing framework that works seamlessly with Vite and supports TypeScript out of the box.
-
-Vitest organizes tests into test suites and cases, similar to other testing frameworks. We recommend creating individual tests based on the expected behavior of your plugin from start to finish.
-
-Writing tests with Vitest is very straightforward, and you can learn more about how it works in the [Vitest documentation.](https://vitest.dev/)
-
-For this template, we stubbed out `int.spec.ts` in the `dev` folder where you can write your tests.
-
-```ts
-describe('Plugin tests', () => {
-  // Create tests to ensure expected behavior from the plugin
-  it('some condition that must be met', () => {
-   // Write your test logic here
-   expect(...)
-  })
+      // Disable the plugin
+      disabled: false, // Default
+    }),
+  ],
 })
 ```
 
-## Best practices
+## Configuration Options
 
-With this tutorial and the plugin template, you should have everything you need to start building your own plugin.
-In addition to the setup, here are other best practices aim we follow:
+### `shortcut`
 
-- **Providing an enable / disable option:** For a better user experience, provide a way to disable the plugin without uninstalling it. This is especially important if your plugin adds additional webpack aliases, this will allow you to still let the webpack run to prevent errors.
-- **Include tests in your GitHub CI workflow**: If you’ve configured tests for your package, integrate them into your workflow to run the tests each time you commit to the plugin repository. Learn more about [how to configure tests into your GitHub CI workflow.](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs)
-- **Publish your finished plugin to NPM**: The best way to share and allow others to use your plugin once it is complete is to publish an NPM package. This process is straightforward and well documented, find out more [creating and publishing a NPM package here.](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/).
-- **Add payload-plugin topic tag**: Apply the tag **payload-plugin **to your GitHub repository. This will boost the visibility of your plugin and ensure it gets listed with [existing payload plugins](https://github.com/topics/payload-plugin).
-- **Use [Semantic Versioning](https://semver.org/) (SemVar)** - With the SemVar system you release version numbers that reflect the nature of changes (major, minor, patch). Ensure all major versions reference their Payload compatibility.
+Keyboard shortcut to open the command menu. Powered by [react-hotkeys-hook](https://react-hotkeys-hook.vercel.app/docs/intro).
 
-# Questions
+- **Type:** `string | string[]`
+- **Default:** `['meta+k', 'ctrl+k']`
 
-Please contact [Payload](mailto:dev@payloadcms.com) with any questions about using this plugin template.
+The default provides cross-platform support:
+- `meta+k` - Works on macOS (⌘K)
+- `ctrl+k` - Works on Windows/Linux (Ctrl+K)
+
+**Examples:**
+
+```typescript
+// Single shortcut
+shortcut: 'ctrl+shift+k'
+
+// Multiple shortcuts for cross-platform support
+shortcut: ['meta+k', 'ctrl+k']
+
+// Custom combinations
+shortcut: ['meta+/', 'ctrl+/']
+```
+
+[screenshot: Search button showing ⌘K on Mac and Ctrl K on Windows]
+
+### `searchButton`
+
+Configuration for the search button displayed in the admin panel.
+
+- **Type:** `{ position?: 'actions' | 'nav' } | false`
+- **Default:** `{ position: 'actions' }`
+
+**Options:**
+- `position: 'actions'` - Display in the action buttons area (default)
+- `position: 'nav'` - Display in the navigation sidebar
+- `false` - Hide the search button completely (keyboard shortcut still works)
+
+**Examples:**
+
+```typescript
+// Display in navigation
+searchButton: {
+  position: 'nav'
+}
+
+// Hide search button
+searchButton: false
+```
+
+### `blurBg`
+
+Enable backdrop blur effect when the command menu is open.
+
+- **Type:** `boolean`
+- **Default:** `true`
+
+```typescript
+blurBg: false // Disable blur effect
+```
+
+### `submenu`
+
+Configure submenu behavior for searching within collection documents.
+
+- **Type:** `object`
+- **Default:** `{ enabled: true, shortcut: 'shift+enter' }`
+
+**Options:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Enable/disable submenu functionality |
+| `shortcut` | `'shift+enter'` \| `'enter'` | `'shift+enter'` | Keyboard shortcut to open submenu |
+| `icons` | `object` | `undefined` | Custom icons for collection submenus |
+
+**Shortcut behavior:**
+- `shift+enter`: Shift+Enter opens submenu, Enter navigates to collection list
+- `enter`: Enter opens submenu, Shift+Enter navigates to collection list
+
+[gif: Using Shift+Enter to search within a collection]
+
+**Example:**
+
+```typescript
+submenu: {
+  enabled: true,
+  shortcut: 'enter',
+  icons: {
+    posts: 'file-text',
+    products: 'shopping-cart',
+  }
+}
+```
+
+The submenu searches documents by their `useAsTitle` field (or `id` if not specified). You can configure this in your collection:
+
+```typescript
+{
+  slug: 'posts',
+  admin: {
+    useAsTitle: 'title' // Submenu will search by this field
+  }
+}
+```
+
+### `icons`
+
+Customize icons for collections and globals using [Lucide icon names](https://lucide.dev/icons).
+
+- **Type:** `object`
+- **Default:** `{ collections: {}, globals: {} }`
+
+**Default icons:**
+- Collections: `Files` icon
+- Globals: `Globe` icon
+
+**Example:**
+
+```typescript
+icons: {
+  collections: {
+    posts: 'file-text',
+    pages: 'file',
+    media: 'image',
+    users: 'users',
+    categories: 'folder',
+  },
+  globals: {
+    settings: 'settings',
+    navigation: 'menu',
+    footer: 'layout',
+  }
+}
+```
+
+Browse all available icons at [lucide.dev/icons](https://lucide.dev/icons).
+
+[screenshot: Command menu showing different Lucide icons for collections]
+
+### `customItems`
+
+Add custom menu items and groups to the command menu.
+
+- **Type:** `Array<CustomMenuItem | CustomMenuGroup>`
+- **Default:** `[]`
+
+#### Custom Menu Item
+
+```typescript
+{
+  type: 'item',
+  slug: 'unique-slug',
+  label: 'Item Label', // Can be localized
+  icon: 'lucide-icon-name', // Optional, from lucide.dev/icons
+  action: {
+    type: 'link' | 'api',
+    href: '/path/or/url',
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE', // For API actions
+    body?: { key: 'value' } // For API actions
+  }
+}
+```
+
+#### Custom Menu Group
+
+```typescript
+{
+  type: 'group',
+  title: 'Group Title', // Can be localized
+  items: [
+    // Array of CustomMenuItem
+  ]
+}
+```
+
+**Example with localization:**
+
+```typescript
+customItems: [
+  {
+    type: 'group',
+    title: {
+      en: 'Quick Actions',
+      uk: 'Швидкі дії',
+    },
+    items: [
+      {
+        type: 'item',
+        slug: 'view-site',
+        label: {
+          en: 'View Site',
+          uk: 'Переглянути сайт',
+        },
+        icon: 'external-link',
+        action: {
+          type: 'link',
+          href: 'https://your-site.com',
+        },
+      },
+      {
+        type: 'item',
+        slug: 'regenerate',
+        label: 'Regenerate Cache',
+        icon: 'refresh-cw',
+        action: {
+          type: 'api',
+          method: 'POST',
+          href: '/api/cache/regenerate',
+        },
+      },
+    ],
+  },
+]
+```
+
+[screenshot: Command menu with custom groups and items]
+
+### `slugsToIgnore`
+
+Specify which collection/global slugs to exclude from the command menu.
+
+- **Type:** `CollectionSlug[] | { ignoreList: CollectionSlug[], replaceDefaults?: boolean }`
+- **Default:** `['payload-migrations', 'payload-preferences', 'payload-locked-documents']`
+
+**Examples:**
+
+```typescript
+// Add to default ignore list
+slugsToIgnore: ['internal-collection', 'test-data']
+
+// Replace default ignore list completely
+slugsToIgnore: {
+  ignoreList: ['my-hidden-collection'],
+  replaceDefaults: true
+}
+```
+
+### `disabled`
+
+Completely disable the plugin.
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+```typescript
+disabled: process.env.DISABLE_COMMAND_MENU === 'true'
+```
+
+## Custom Translations
+
+The plugin includes built-in translations for:
+- 🇬🇧 English (`en`)
+- 🇺🇦 Ukrainian (`uk`)
+
+You can add translations for other languages using Payload's i18n configuration:
+
+```typescript
+import { buildConfig } from 'payload'
+
+export default buildConfig({
+  i18n: {
+    supportedLanguages: {
+      //You can learn more about adding languages in the Payload docs
+      en,
+      uk,
+      de,
+      fr,
+    },
+    translations: {
+      de: {
+        cmdkPlugin: {
+          search: 'Sammlungen, Globals durchsuchen...',
+          searchShort: 'Suchen',
+          searchIn: 'Suchen in {{label}}',
+          loading: 'Lädt...',
+          noResults: 'Keine Ergebnisse gefunden',
+          toNavigate: 'zum Navigieren',
+          toSearchIn: 'in Sammlung suchen',
+          toOpen: 'zum Öffnen',
+          toSelect: 'zum Auswählen',
+          toExecute: 'zum Ausführen',
+        },
+      },
+      fr: {
+        cmdkPlugin: {
+          search: 'Rechercher collections, globals...',
+          searchShort: 'Rechercher',
+          searchIn: 'Rechercher dans {{label}}',
+          loading: 'Chargement...',
+          noResults: 'Aucun résultat trouvé',
+          toNavigate: 'pour naviguer',
+          toSearchIn: 'pour rechercher dans la collection',
+          toOpen: 'pour ouvrir',
+          toSelect: 'pour sélectionner',
+          toExecute: 'pour exécuter',
+        },
+      },
+    },
+  },
+  plugins: [
+    payloadCmdk({
+      // Your config
+    }),
+  ],
+})
+```
+
+### Available Translation Keys
+
+All translation keys are under the `cmdkPlugin` namespace:
+
+| Key | Description | Example (EN) |
+|-----|-------------|--------------|
+| `search` | Main search placeholder | "Search collections, globals..." |
+| `searchShort` | Short search label | "Search" |
+| `searchIn` | Submenu search placeholder | "Search in {{label}}" |
+| `loading` | Loading state | "Loading..." |
+| `noResults` | No results state | "No results found" |
+| `toNavigate` | Footer hint for navigation | "to navigate" |
+| `toSearchIn` | Footer hint for collection search | "to search in collection" |
+| `toOpen` | Footer hint for opening | "to open" |
+| `toSelect` | Footer hint for selecting | "to select" |
+| `toExecute` | Footer hint for API actions | "to execute" |
+
+[screenshot: Command menu footer showing contextual hints]
+
+## Keyboard Shortcuts
+
+### Global Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘K` / `Ctrl+K` | Open/close command menu |
+| `Esc` | Close menu or go back in submenu |
+| `↑` `↓` | Navigate items |
+| `Enter` | Select item or navigate to collection |
+| `Shift+Enter` | Search within collection (default) |
+
+### In Submenu
+
+| Shortcut | Action |
+|----------|--------|
+| `Esc` | Go back to main menu |
+| `Enter` | Open selected document |
+
+## Examples
+
+### Minimal Setup
+
+```typescript
+export default buildConfig({
+  plugins: [payloadCmdk()],
+})
+```
+
+### Custom Shortcuts Only
+
+```typescript
+export default buildConfig({
+  plugins: [
+    payloadCmdk({
+      shortcut: ['meta+/', 'ctrl+/'],
+      searchButton: false, // Hide button, only use keyboard
+    }),
+  ],
+})
+```
+
+### With Custom Actions
+
+```typescript
+export default buildConfig({
+  plugins: [
+    payloadCmdk({
+      customItems: [
+        {
+          type: 'item',
+          slug: 'documentation',
+          label: 'View Documentation',
+          icon: 'book-open',
+          action: {
+            type: 'link',
+            href: 'https://docs.your-site.com',
+          },
+        },
+      ],
+    }),
+  ],
+})
+```
+
+### Full Custom Theme
+
+```typescript
+export default buildConfig({
+  plugins: [
+    payloadCmdk({
+      icons: {
+        collections: {
+          posts: 'newspaper',
+          pages: 'file-text',
+          media: 'image',
+          categories: 'folder-tree',
+          tags: 'tag',
+          users: 'user-circle',
+          comments: 'message-circle',
+        },
+        globals: {
+          header: 'layout-template',
+          footer: 'layout',
+          settings: 'settings-2',
+          navigation: 'navigation',
+          seo: 'search',
+        },
+      },
+      submenu: {
+        enabled: true,
+        icons: {
+          posts: 'file-text',
+          pages: 'file',
+          media: 'image',
+        },
+      },
+    }),
+  ],
+})
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Issues
+
+Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/VeiaG/payload-cmdk/issues).
+
+## License
+
+MIT © [VeiaG](https://github.com/VeiaG)
+
+## Links
+
+- [GitHub Repository](https://github.com/VeiaG/payload-cmdk/tree/main)
+- [Payload CMS](https://payloadcms.com)
+- [Lucide Icons](https://lucide.dev/icons)
+- [react-hotkeys-hook Documentation](https://react-hotkeys-hook.vercel.app/docs/intro)
+
+# More plugins and payload resources at [PayloadCMS Extensions](https://payload.veiag.dev/)

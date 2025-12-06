@@ -1,5 +1,5 @@
 {
-  "name": "plugin-command-menu",
+  "name": "@veiag/payload-cmdk",
   "version": "1.0.0",
   "description": "A command menu plugin for Payload CMS to enhance navigation and accessibility within the admin panel.",
   "author": "VeiaG",

@@ -2,10 +2,10 @@ import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { en } from '@payloadcms/translations/languages/en'
 import { uk } from '@payloadcms/translations/languages/uk'
+import { payloadCmdk } from '@veiag/payload-cmdk'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import path from 'path'
 import { buildConfig } from 'payload'
-import { pluginCommandMenu } from 'plugin-command-menu'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
@@ -144,7 +144,7 @@ const buildConfigWithMemoryDB = async () => {
       await seed(payload)
     },
     plugins: [
-      pluginCommandMenu({
+      payloadCmdk({
         customItems: [
           {
             slug: 'custom-item-1',
