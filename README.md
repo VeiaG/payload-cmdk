@@ -595,6 +595,7 @@ MIT © [VeiaG](https://github.com/VeiaG)
 
 ## Links
 
+- [cmdk Component](https://cmdk.paco.me/)
 - [GitHub Repository](https://github.com/VeiaG/payload-cmdk/tree/main)
 - [Payload CMS](https://payloadcms.com)
 - [Lucide Icons](https://lucide.dev/icons)
