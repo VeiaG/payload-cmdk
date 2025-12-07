@@ -59,16 +59,12 @@ export type PluginCommandMenuConfig = {
      * Custom icons for collections.
      * @default <Files/>
      */
-    collections?: {
-      [K in CollectionSlug]: IconName
-    }
+    collections?: Partial<Record<CollectionSlug, IconName>>
     /**
      * Custom icons for globals.
      * @default <Globe/>
      */
-    globals?: {
-      [K in GlobalSlug]: IconName
-    }
+    globals?: Partial<Record<GlobalSlug, IconName>>
   }
   /**
    * Configuration for the search button in the admin navigation.
@@ -129,9 +125,7 @@ export type PluginCommandMenuConfig = {
      *
      * @default null
      */
-    icons?: {
-      [K in CollectionSlug]: IconName
-    }
+    icons?: Partial<Record<CollectionSlug, IconName>>
     /**
      * Keyboard shortcut to open collection submenu.
      * - 'shift+enter': Shift+Enter opens submenu, Enter navigates to collection list
