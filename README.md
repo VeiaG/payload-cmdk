@@ -566,6 +566,9 @@ export default buildConfig({
 })
 ```
 
+## Troubleshooting
+- `Objects are not valid as a React child` error: Ensure your `admin.useAsTitle` field is a string and not an object. Currently, plugin doesn't have any safeguards for non-string title fields.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
