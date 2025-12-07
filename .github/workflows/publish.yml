@@ -38,6 +38,13 @@ jobs:
       - name: Build package
         run: pnpm build
 
-      - name: Publish to npm (with provenance)
-        run: pnpm publish --provenance --access public --no-git-checks
+      - name: Publish to npm
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Note: Using NPM_TOKEN for now.
+        # To use trusted publishers in the future:
+        # 1. Remove the env section above
+        # 2. Add --provenance flag back to publish command
+        # 3. Ensure id-token: write permission is set (already configured)
 
