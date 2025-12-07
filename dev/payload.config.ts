@@ -246,7 +246,7 @@ const buildConfigWithMemoryDB = async () => {
               type: 'link',
               href: 'https://payload.veiag.dev',
             },
-            icon: 'external-link',
+            icon: 'ExternalLink',
             label: {
               en: 'View Site',
               uk: 'Переглянути сайт',
@@ -262,7 +262,7 @@ const buildConfigWithMemoryDB = async () => {
                   type: 'api',
                   href: '/api/cache/clear',
                 },
-                icon: 'trash-2',
+                icon: 'Trash2',
                 label: {
                   en: 'Clear Cache',
                   uk: 'Очистити кеш',
@@ -275,7 +275,7 @@ const buildConfigWithMemoryDB = async () => {
                   type: 'link',
                   href: 'https://payloadcms.com/docs',
                 },
-                icon: 'book-open',
+                icon: 'BookOpen',
                 label: {
                   en: 'Documentation',
                   uk: 'Документація',
@@ -290,23 +290,23 @@ const buildConfigWithMemoryDB = async () => {
         ],
         icons: {
           collections: {
-            categories: 'folder',
-            media: 'image',
-            pages: 'file-text',
-            posts: 'newspaper',
-            products: 'shopping-cart',
-            users: 'users',
+            categories: 'Folder',
+            media: 'Image',
+            pages: 'FileText',
+            posts: 'Newspaper',
+            products: 'ShoppingCart',
+            users: 'Users',
           },
           globals: {
-            'footer-settings': 'layout',
-            'site-settings': 'settings',
+            'footer-settings': 'Footer',
+            'site-settings': 'Settings',
           },
         },
         submenu: {
           icons: {
-            pages: 'file',
-            posts: 'file-text',
-            products: 'package',
+            pages: 'File',
+            posts: 'FileText',
+            products: 'Package',
           },
         },
       }),

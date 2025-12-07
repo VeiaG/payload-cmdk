@@ -1,6 +1,7 @@
-import type { LucideIcon } from 'lucide-react'
-import type { IconName } from 'lucide-react/dynamic'
+import type { icons, LucideIcon } from 'lucide-react'
 import type { CollectionSlug, GlobalSlug } from 'payload'
+
+export type IconName = keyof typeof icons
 
 export type LocalizedString = { [locale: string]: string } | string
 
@@ -59,14 +60,14 @@ export type PluginCommandMenuConfig = {
      * @default <Files/>
      */
     collections?: {
-      [key: CollectionSlug]: IconName
+      [K in CollectionSlug]: IconName
     }
     /**
      * Custom icons for globals.
      * @default <Globe/>
      */
     globals?: {
-      [key: GlobalSlug]: IconName
+      [K in GlobalSlug]: IconName
     }
   }
   /**
@@ -129,7 +130,7 @@ export type PluginCommandMenuConfig = {
      * @default null
      */
     icons?: {
-      [key: CollectionSlug]: IconName
+      [K in CollectionSlug]: IconName
     }
     /**
      * Keyboard shortcut to open collection submenu.

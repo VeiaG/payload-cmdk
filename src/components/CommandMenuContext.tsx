@@ -1,6 +1,5 @@
 'use client'
 import type { LucideIcon } from 'lucide-react'
-import type { IconName } from 'lucide-react/dynamic'
 import type { CustomTranslationsKeys, CustomTranslationsObject } from 'src/translations/index'
 
 import './modal.scss'
@@ -11,12 +10,12 @@ import type {
   CommandMenuItem,
   CommandMenuPage,
   GenericCollectionDocument,
+  IconName,
   PluginCommandMenuConfig,
 } from 'src/types'
 
 import { Modal, useConfig, useModal, useTranslation } from '@payloadcms/ui'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { useRouter } from 'next/navigation'
 import {
   createContext,
@@ -42,6 +41,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from './cmdk/index'
+import { LucideIconDynamic } from './LucideIcon'
 
 const MODAL_SLUG = 'command-menu'
 
@@ -283,19 +283,20 @@ const CommandMenuComponent: React.FC<{
   const shouldDisableFilter = currentPage !== 'main'
 
   // Static footer shortcuts based on current page
-  const footerShortcuts = currentPage === 'main' && submenuEnabled && submenuShortcut === 'shift+enter'
-    ? [
-        { key: 'Enter', label: t('cmdkPlugin:navigate') },
-        { key: 'Shift + Enter', label: t('cmdkPlugin:searchInCollection') },
-      ]
-    : currentPage === 'main' && submenuEnabled && submenuShortcut === 'enter'
+  const footerShortcuts =
+    currentPage === 'main' && submenuEnabled && submenuShortcut === 'shift+enter'
       ? [
-          { key: 'Enter', label: t('cmdkPlugin:searchInCollection') },
-          { key: 'Shift + Enter', label: t('cmdkPlugin:navigate') },
+          { key: 'Enter', label: t('cmdkPlugin:navigate') },
+          { key: 'Shift + Enter', label: t('cmdkPlugin:searchInCollection') },
         ]
-      : currentPage === 'main'
-        ? [{ key: 'Enter', label: t('cmdkPlugin:navigate') }]
-        : [{ key: 'Enter', label: t('cmdkPlugin:open') }]
+      : currentPage === 'main' && submenuEnabled && submenuShortcut === 'enter'
+        ? [
+            { key: 'Enter', label: t('cmdkPlugin:searchInCollection') },
+            { key: 'Shift + Enter', label: t('cmdkPlugin:navigate') },
+          ]
+        : currentPage === 'main'
+          ? [{ key: 'Enter', label: t('cmdkPlugin:navigate') }]
+          : [{ key: 'Enter', label: t('cmdkPlugin:open') }]
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Close modal only if clicking the backdrop (not the command itself)
@@ -362,7 +363,7 @@ const CommandMenuComponent: React.FC<{
                             value={item.slug}
                           >
                             {isDynamicIcon ? (
-                              <DynamicIcon
+                              <LucideIconDynamic
                                 className="command__item-icon"
                                 name={item.icon as IconName}
                               />
@@ -410,7 +411,10 @@ const CommandMenuComponent: React.FC<{
                     value={item.slug}
                   >
                     {isDynamicIcon ? (
-                      <DynamicIcon className="command__item-icon" name={item.icon as IconName} />
+                      <LucideIconDynamic
+                        className="command__item-icon"
+                        name={item.icon as IconName}
+                      />
                     ) : (
                       IconComponent && <IconComponent className="command__item-icon" />
                     )}
