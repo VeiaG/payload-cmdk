@@ -40,7 +40,7 @@ jobs:
 
       - name: Publish to npm
         run: pnpm publish --access public --no-git-checks --provenance #Added back to test in 1.0.2
-        env:
+        # env:
           # NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         # Note: Using NPM_TOKEN for now.
         # To use trusted publishers in the future:
