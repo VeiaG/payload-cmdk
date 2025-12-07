@@ -416,30 +416,26 @@ export default buildConfig({
     translations: {
       de: {
         cmdkPlugin: {
-          search: 'Sammlungen, Globals durchsuchen...',
-          searchShort: 'Suchen',
-          searchIn: 'Suchen in {{label}}',
           loading: 'Lädt...',
+          navigate: 'zum Navigieren',
           noResults: 'Keine Ergebnisse gefunden',
-          toNavigate: 'zum Navigieren',
-          toSearchIn: 'in Sammlung suchen',
-          toOpen: 'zum Öffnen',
-          toSelect: 'zum Auswählen',
-          toExecute: 'zum Ausführen',
+          open: 'zum Öffnen',
+          search: 'Sammlungen, Globals durchsuchen...',
+          searchIn: 'Suchen in {{label}}',
+          searchInCollection: 'in Sammlung suchen',
+          searchShort: 'Suchen',
         },
       },
       fr: {
         cmdkPlugin: {
-          search: 'Rechercher collections, globals...',
-          searchShort: 'Rechercher',
-          searchIn: 'Rechercher dans {{label}}',
           loading: 'Chargement...',
+          navigate: 'pour naviguer',
           noResults: 'Aucun résultat trouvé',
-          toNavigate: 'pour naviguer',
-          toSearchIn: 'pour rechercher dans la collection',
-          toOpen: 'pour ouvrir',
-          toSelect: 'pour sélectionner',
-          toExecute: 'pour exécuter',
+          open: 'pour ouvrir',
+          search: 'Rechercher collections, globals...',
+          searchIn: 'Rechercher dans {{label}}',
+          searchInCollection: 'pour rechercher dans la collection',
+          searchShort: 'Rechercher',
         },
       },
     },
@@ -463,11 +459,9 @@ All translation keys are under the `cmdkPlugin` namespace:
 | `searchIn` | Submenu search placeholder | "Search in {{label}}" |
 | `loading` | Loading state | "Loading..." |
 | `noResults` | No results state | "No results found" |
-| `toNavigate` | Footer hint for navigation | "to navigate" |
-| `toSearchIn` | Footer hint for collection search | "to search in collection" |
-| `toOpen` | Footer hint for opening | "to open" |
-| `toSelect` | Footer hint for selecting | "to select" |
-| `toExecute` | Footer hint for API actions | "to execute" |
+| `navigate` | Footer hint for navigation | "to navigate" |
+| `searchInCollection` | Footer hint for collection search | "to search in collection" |
+| `open` | Footer hint for opening documents | "to open" |
 
 
 ## Keyboard Shortcuts

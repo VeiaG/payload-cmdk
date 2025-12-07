@@ -1,11 +1,7 @@
 'use client'
 import type { LucideIcon } from 'lucide-react'
 import type { IconName } from 'lucide-react/dynamic'
-import type {
-  AvaibleTranslation,
-  CustomTranslationsKeys,
-  CustomTranslationsObject,
-} from 'src/translations/index'
+import type { CustomTranslationsKeys, CustomTranslationsObject } from 'src/translations/index'
 
 import './modal.scss'
 
@@ -25,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import {
   createContext,
   Fragment,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -285,61 +282,20 @@ const CommandMenuComponent: React.FC<{
 
   const shouldDisableFilter = currentPage !== 'main'
 
-  // Dynamic footer text based on highlighted item from DOM
-  const getFooterText = () => {
-    const selectedElement = getSelectedElement(commandListRef)
-    if (!selectedElement) {
-      return null
-    }
-
-    const itemType = selectedElement.getAttribute('data-item-type')
-    const actionType = selectedElement.getAttribute('data-action-type')
-
-    const shortcuts: {
-      action: AvaibleTranslation
-      key: string
-    }[] = []
-
-    if (currentPage === 'main') {
-      // For collections, show both submenu and navigation shortcuts
-      if (submenuEnabled && itemType === 'collection') {
-        if (submenuShortcut === 'shift+enter') {
-          shortcuts.push({ action: 'toNavigate', key: 'Enter' })
-          shortcuts.push({ action: 'toSearchIn', key: 'Shift + Enter' })
-        } else {
-          shortcuts.push({ action: 'toSearchIn', key: 'Enter' })
-          shortcuts.push({ action: 'toNavigate', key: 'Shift + Enter' })
-        }
-      } else {
-        // For non-collections, show appropriate action
-        let actionText: AvaibleTranslation = 'toSelect'
-        if (actionType === 'link') {
-          actionText = 'toNavigate'
-        } else if (actionType === 'api') {
-          actionText = 'toExecute'
-        }
-
-        shortcuts.push({ action: actionText, key: 'Enter' })
-      }
-    } else {
-      // In submenu, just show Enter to open/navigate
-      const actionText = actionType === 'link' ? 'toOpen' : 'toSelect'
-      shortcuts.push({ action: actionText, key: 'Enter' })
-    }
-
-    return shortcuts
-  }
-
-  // Force re-render when selection might change - we'll use a key to force footer updates
-  const [, forceUpdate] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      forceUpdate((n) => n + 1)
-    }, 100)
-    return () => clearInterval(interval)
-  }, [])
-
-  const footerShortcuts = getFooterText()
+  // Static footer shortcuts based on current page
+  const footerShortcuts = currentPage === 'main' && submenuEnabled && submenuShortcut === 'shift+enter'
+    ? [
+        { key: 'Enter', label: t('cmdkPlugin:navigate') },
+        { key: 'Shift + Enter', label: t('cmdkPlugin:searchInCollection') },
+      ]
+    : currentPage === 'main' && submenuEnabled && submenuShortcut === 'enter'
+      ? [
+          { key: 'Enter', label: t('cmdkPlugin:searchInCollection') },
+          { key: 'Shift + Enter', label: t('cmdkPlugin:navigate') },
+        ]
+      : currentPage === 'main'
+        ? [{ key: 'Enter', label: t('cmdkPlugin:navigate') }]
+        : [{ key: 'Enter', label: t('cmdkPlugin:open') }]
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Close modal only if clicking the backdrop (not the command itself)
@@ -464,12 +420,12 @@ const CommandMenuComponent: React.FC<{
               })}
           </CommandList>
 
-          {/* Footer with dynamic shortcuts */}
+          {/* Footer with static shortcuts */}
           {footerShortcuts && footerShortcuts.length > 0 && (
             <div className="command__footer">
               {footerShortcuts.map((shortcut, index) => (
                 <span key={index}>
-                  <kbd>{formatShortcutKey(shortcut.key)}</kbd> {t(`cmdkPlugin:${shortcut.action}`)}
+                  <kbd>{formatShortcutKey(shortcut.key)}</kbd> {shortcut.label}
                 </span>
               ))}
             </div>
@@ -480,6 +436,8 @@ const CommandMenuComponent: React.FC<{
   )
 }
 
+const MemoizedCommandMenuComponent = memo(CommandMenuComponent)
+
 export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
   children,
   pluginConfig,
@@ -487,11 +445,15 @@ export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
   const { closeModal, isModalOpen, openModal, toggleModal } = useModal()
   const [currentPage, setCurrentPage] = useState<CommandMenuPage>('main')
 
-  useHotkeys(pluginConfig.shortcut || ['meta+k', 'ctrl+k'], (event) => {
-    event.preventDefault()
-    event.stopPropagation()
-    toggleModal(MODAL_SLUG)
-  })
+  useHotkeys(
+    pluginConfig.shortcut || ['meta+k', 'ctrl+k'],
+    (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      toggleModal(MODAL_SLUG)
+    },
+    [toggleModal],
+  )
   const { config } = useConfig()
   const { i18n } = useTranslation()
   const currentLang = i18n.language
@@ -513,7 +475,7 @@ export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
       }}
     >
       {children}
-      <CommandMenuComponent pluginConfig={pluginConfig} />
+      <MemoizedCommandMenuComponent pluginConfig={pluginConfig} />
     </CommandMenuContext.Provider>
   )
 }
