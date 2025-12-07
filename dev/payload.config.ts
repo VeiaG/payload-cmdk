@@ -298,7 +298,7 @@ const buildConfigWithMemoryDB = async () => {
             users: 'Users',
           },
           globals: {
-            'footer-settings': 'Footer',
+            'footer-settings': 'ArrowDown',
             'site-settings': 'Settings',
           },
         },

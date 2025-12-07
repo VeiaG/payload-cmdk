@@ -304,7 +304,7 @@ const CommandMenuComponent: React.FC<{
       closeMenu()
     }
   }
-
+  console.log('Rendering CommandMenuComponent', { currentPage, groups, items, submenuItems })
   return (
     <Modal slug={MODAL_SLUG}>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
@@ -358,7 +358,7 @@ const CommandMenuComponent: React.FC<{
                             data-action-type={item.action.type}
                             data-item-type={item.type}
                             key={item.slug}
-                            keywords={[group.title]}
+                            keywords={[group.title, item.label]}
                             onSelect={() => handleSelect(item)}
                             value={item.slug}
                           >
@@ -385,17 +385,30 @@ const CommandMenuComponent: React.FC<{
 
             {/* Stray items on main page */}
             {currentPage === 'main' &&
-              items?.map((item) => (
-                <CommandItem
-                  data-action-type={item.action.type}
-                  data-item-type={item.type}
-                  key={item.slug}
-                  onSelect={() => handleSelect(item)}
-                  value={item.slug}
-                >
-                  {item.label}
-                </CommandItem>
-              ))}
+              items?.map((item) => {
+                const isDynamicIcon = typeof item.icon === 'string'
+                const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
+                return (
+                  <CommandItem
+                    data-action-type={item.action.type}
+                    data-item-type={item.type}
+                    key={item.slug}
+                    keywords={[item.label]}
+                    onSelect={() => handleSelect(item)}
+                    value={item.slug}
+                  >
+                    {isDynamicIcon ? (
+                      <LucideIconDynamic
+                        className="command__item-icon"
+                        name={item.icon as IconName}
+                      />
+                    ) : (
+                      IconComponent && <IconComponent className="command__item-icon" />
+                    )}
+                    {item.label}
+                  </CommandItem>
+                )
+              })}
 
             {/* Submenu page view */}
             {currentPage !== 'main' &&
