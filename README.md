@@ -76,22 +76,22 @@ export default buildConfig({
         enabled: true, // Default
         shortcut: 'shift+enter', // 'shift+enter' | 'enter'
         icons: {
-          posts: 'file-text',
-          users: 'user',
+          posts: 'FileText',
+          users: 'User',
         },
       },
 
       // Custom icons for collections and globals
       icons: {
         collections: {
-          posts: 'file-text',
-          pages: 'file',
-          media: 'image',
-          users: 'users',
+          posts: 'FileText',
+          pages: 'File',
+          media: 'Image',
+          users: 'Users',
         },
         globals: {
-          settings: 'settings',
-          navigation: 'menu',
+          settings: 'Settings',
+          navigation: 'Menu',
         },
       },
 
@@ -108,7 +108,7 @@ export default buildConfig({
               type: 'item',
               slug: 'view-site',
               label: 'View Site',
-              icon: 'external-link',
+              icon: 'ExternalLink',
               action: {
                 type: 'link',
                 href: 'https://your-site.com',
@@ -118,7 +118,7 @@ export default buildConfig({
               type: 'item',
               slug: 'clear-cache',
               label: 'Clear Cache',
-              icon: 'trash-2',
+              icon: 'Trash2',
               action: {
                 type: 'api',
                 method: 'POST',
@@ -235,8 +235,8 @@ submenu: {
   enabled: true,
   shortcut: 'enter',
   icons: {
-    posts: 'file-text',
-    products: 'shopping-cart',
+    posts: 'FileText',
+    products: 'ShoppingCart',
   }
 }
 ```
@@ -268,16 +268,16 @@ Customize icons for collections and globals using [Lucide icon names](https://lu
 ```typescript
 icons: {
   collections: {
-    posts: 'file-text',
-    pages: 'file',
-    media: 'image',
-    users: 'users',
-    categories: 'folder',
+    posts: 'FileText',
+    pages: 'File',
+    media: 'Image',
+    users: 'Users',
+    categories: 'Folder',
   },
   globals: {
-    settings: 'settings',
-    navigation: 'menu',
-    footer: 'layout',
+    settings: 'Settings',
+    navigation: 'Menu',
+    footer: 'Layout',
   }
 }
 ```
@@ -300,7 +300,7 @@ Add custom menu items and groups to the command menu.
   type: 'item',
   slug: 'unique-slug',
   label: 'Item Label', // Can be localized
-  icon: 'lucide-icon-name', // Optional, from lucide.dev/icons
+  icon: 'LucideIconName', // Optional, from lucide.dev/icons
   action: {
     type: 'link' | 'api',
     href: '/path/or/url',
@@ -340,7 +340,7 @@ customItems: [
           en: 'View Site',
           uk: 'Переглянути сайт',
         },
-        icon: 'external-link',
+        icon: 'ExternalLink',
         action: {
           type: 'link',
           href: 'https://your-site.com',
@@ -350,7 +350,7 @@ customItems: [
         type: 'item',
         slug: 'regenerate',
         label: 'Regenerate Cache',
-        icon: 'refresh-cw',
+        icon: 'RefreshCw',
         action: {
           type: 'api',
           method: 'POST',
@@ -517,7 +517,7 @@ export default buildConfig({
           type: 'item',
           slug: 'documentation',
           label: 'View Documentation',
-          icon: 'book-open',
+          icon: 'BookOpen',
           action: {
             type: 'link',
             href: 'https://docs.your-site.com',
@@ -537,28 +537,28 @@ export default buildConfig({
     payloadCmdk({
       icons: {
         collections: {
-          posts: 'newspaper',
-          pages: 'file-text',
-          media: 'image',
-          categories: 'folder-tree',
-          tags: 'tag',
-          users: 'user-circle',
-          comments: 'message-circle',
+          posts: 'Newspaper',
+          pages: 'FileText',
+          media: 'Image',
+          categories: 'FolderTree',
+          tags: 'Tag',
+          users: 'UserCircle',
+          comments: 'MessageCircle',
         },
         globals: {
-          header: 'layout-template',
-          footer: 'layout',
-          settings: 'settings-2',
-          navigation: 'navigation',
-          seo: 'search',
+          header: 'LayoutTemplate',
+          footer: 'Layout',
+          settings: 'Settings',
+          navigation: 'Menu',
+          seo: 'Search',
         },
       },
       submenu: {
         enabled: true,
         icons: {
-          posts: 'file-text',
-          pages: 'file',
-          media: 'image',
+          posts: 'FileText',
+          pages: 'File',
+          media: 'Image',
         },
       },
     }),
