@@ -358,7 +358,7 @@ const CommandMenuComponent: React.FC<{
                             data-action-type={item.action.type}
                             data-item-type={item.type}
                             key={item.slug}
-                            keywords={[group.title, item.label]}
+                            keywords={[titleName, item.label]}
                             onSelect={() => handleSelect(item)}
                             value={item.slug}
                           >
