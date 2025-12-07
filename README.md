@@ -7,11 +7,17 @@ A powerful command menu plugin for [Payload CMS](https://payloadcms.com) that en
 ## Features
 
 ✨ **Quick Search** - Instantly search across all collections and globals
+
 ⌨️ **Keyboard Shortcuts** - Fully customizable keyboard shortcuts powered by [react-hotkeys-hook](https://react-hotkeys-hook.vercel.app/docs/intro)
+
 🔍 **Collection Submenu** - Search within collection documents by their title field
+
 🎨 **Custom Icons** - Use any [Lucide icon](https://lucide.dev/icons) for collections and globals
+
 🎯 **Custom Items** - Add custom actions and menu groups
+
 🌍 **i18n Support** - Built-in English and Ukrainian translations, easily add your own
+
 🖥️ **Cross-platform** - Optimized shortcuts for both macOS and Windows/Linux
 
 
