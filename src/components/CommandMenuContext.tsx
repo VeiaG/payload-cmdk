@@ -304,7 +304,7 @@ const CommandMenuComponent: React.FC<{
       closeMenu()
     }
   }
-  console.log('Rendering CommandMenuComponent', { currentPage, groups, items, submenuItems })
+  // console.log('Rendering CommandMenuComponent', { currentPage, groups, items, submenuItems })
   return (
     <Modal slug={MODAL_SLUG}>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
