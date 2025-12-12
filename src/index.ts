@@ -5,8 +5,19 @@ import type { PluginCommandMenuConfig } from './types'
 import { commandPluginTranslations } from './translations'
 
 export const payloadCmdk =
-  (pluginOptions: PluginCommandMenuConfig) =>
+  (pluginOptions: PluginCommandMenuConfig = {}) =>
   (config: Config): Config => {
+    /**
+     * Initialize plugin options with safe defaults:
+     * - `disabled: false` ensures the plugin is enabled by default and prevents
+     *   "undefined" errors when checking `pluginOptions.disabled`
+     * - Spreading `...pluginOptions` preserves any user-provided overrides
+     */
+    pluginOptions = {
+      disabled: false,
+      ...pluginOptions,
+    }
+
     /**
      * If the plugin is disabled, we still want to keep added collections/fields so the database schema is consistent which is important for migrations.
      * If your plugin heavily modifies the database schema, you may want to remove this property.
