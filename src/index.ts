@@ -13,10 +13,12 @@ export const payloadCmdk =
      *   "undefined" errors when checking `pluginOptions.disabled`
      * - Spreading `...pluginOptions` preserves any user-provided overrides
      */
-    pluginOptions = {
-      disabled: false,
-      ...pluginOptions,
-    }
+    // This can be useful later, if we introduce some defaults, other than disabled. Right now all defaults are hard-coded (like variable || 'default value' )
+    // Either we remove this, or move all our hardcoded defaults to one default config, which will get merged with user config.
+    //pluginOptions = {
+    //  disabled: false,
+    //  ...pluginOptions,
+    //}
 
     /**
      * If the plugin is disabled, we still want to keep added collections/fields so the database schema is consistent which is important for migrations.
