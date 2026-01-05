@@ -602,3 +602,11 @@ MIT © [VeiaG](https://github.com/VeiaG)
 - [react-hotkeys-hook Documentation](https://react-hotkeys-hook.vercel.app/docs/intro)
 
 # More plugins and payload resources at [PayloadCMS Extensions](https://payload.veiag.dev/)
+
+<a href="https://www.star-history.com/#VeiaG/payload-cmdk&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=VeiaG/payload-cmdk&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=VeiaG/payload-cmdk&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=VeiaG/payload-cmdk&type=date&legend=top-left" />
+ </picture>
+</a>
