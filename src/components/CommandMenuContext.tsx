@@ -14,7 +14,7 @@ import type {
   PluginCommandMenuConfig,
 } from 'src/types'
 
-import { Modal, useConfig, useModal, useTranslation } from '@payloadcms/ui'
+import { Modal, useConfig, useModal, useRouteTransition, useTranslation } from '@payloadcms/ui'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
@@ -90,6 +90,7 @@ const CommandMenuComponent: React.FC<{
 
   const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
   const router = useRouter()
+  const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
 
   useEffect(() => {
@@ -195,7 +196,7 @@ const CommandMenuComponent: React.FC<{
           })
           break
         case 'link':
-          router.push(item.action.href)
+          startRouteTransition(() => router.push(item.action.href))
           break
         default:
           break
@@ -204,7 +205,7 @@ const CommandMenuComponent: React.FC<{
       setSearch('')
       setPage('main')
     },
-    [router, closeMenu, setPage],
+    [router, closeMenu, setPage, startRouteTransition],
   )
 
   const openSubmenu = useCallback(
