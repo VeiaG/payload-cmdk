@@ -8,11 +8,32 @@ export type LocalizedString = { [locale: string]: string } | string
 export type InternalIcon = IconName | LucideIcon
 
 /**
+ * Controls which context within a collection a custom item/group is visible in.
+ *
+ * - `'list'`     — only on the collection list page     (`/admin/collections/{slug}`)
+ * - `'document'` — only on a document edit/create page  (`/admin/collections/{slug}/{id|create}`)
+ * - `'both'`     — on both (default)
+ */
+export type CollectionContext = 'both' | 'document' | 'list'
+
+/**
  * Custom menu item, for configuration.
  * Will be mapped to CommandMenuItem internally.
  */
 export type CustomMenuItem = {
   action: CommandMenuAction
+  /**
+   * Further restrict visibility within a matching collection.
+   * Only meaningful when `collectionSlugs` is also set (or when you want the item to appear
+   * on a specific context across all collections).
+   *
+   * - `'list'`     — only on the collection list page
+   * - `'document'` — only on a document edit / create page
+   * - `'both'`     — on both (default)
+   *
+   * @default 'both'
+   */
+  collectionContext?: CollectionContext
   /**
    * Restrict this item to only appear when the user is on one of these collection pages.
    * Matches against the current route (e.g. `/admin/collections/{slug}`).
@@ -32,6 +53,18 @@ export type CustomMenuItem = {
  * Groups will be merged if they have the same title.
  */
 export type CustomMenuGroup = {
+  /**
+   * Further restrict visibility within a matching collection.
+   * Only meaningful when `collectionSlugs` is also set (or when you want the group to appear
+   * on a specific context across all collections).
+   *
+   * - `'list'`     — only on the collection list page
+   * - `'document'` — only on a document edit / create page
+   * - `'both'`     — on both (default)
+   *
+   * @default 'both'
+   */
+  collectionContext?: CollectionContext
   /**
    * Restrict this group to only appear when the user is on one of these collection pages.
    * Matches against the current route (e.g. `/admin/collections/{slug}`).
@@ -202,6 +235,8 @@ export interface CommandMenuItem {
    * Action to perform when the command menu item is selected.
    */
   action: CommandMenuAction
+  /** Populated from `CustomMenuItem.collectionContext`. */
+  collectionContext?: CollectionContext
   /**
    * Restrict this item to only appear when the user is on one of these collection pages.
    * Populated from `CustomMenuItem.collectionSlugs`.
@@ -232,6 +267,8 @@ export interface CommandMenuItem {
 }
 
 export interface CommandMenuGroup {
+  /** Populated from `CustomMenuGroup.collectionContext`. */
+  collectionContext?: CollectionContext
   /**
    * Restrict this group to only appear when the user is on one of these collection pages.
    * Populated from `CustomMenuGroup.collectionSlugs`.

@@ -78,6 +78,7 @@ export const convertConfigItem = (item: CustomMenuItem, currentLang: string): Co
     slug: item.slug,
     type: 'custom',
     action: item.action,
+    collectionContext: item.collectionContext,
     collectionSlugs: item.collectionSlugs,
     icon: item.icon,
     label: extractLocalizedValue(item.label, currentLang, item.slug),
@@ -89,6 +90,7 @@ export const convertConfigGroup = (
   currentLang: string,
 ): CommandMenuGroup => {
   return {
+    collectionContext: group.collectionContext,
     collectionSlugs: group.collectionSlugs,
     items: group.items.map((item) => convertConfigItem(item, currentLang)), // Will be merged with existing items if group exists
     title: extractLocalizedValue(group.title, currentLang),
@@ -228,6 +230,7 @@ export const createDefaultGroups = (
         if (!avaibleGroups.has(convertedGroup.title)) {
           avaibleGroups.add(convertedGroup.title)
           groups.push({
+            collectionContext: convertedGroup.collectionContext,
             collectionSlugs: convertedGroup.collectionSlugs,
             items: [], //Don't add items yet, will do below
             title: convertedGroup.title,

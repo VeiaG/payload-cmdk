@@ -5,6 +5,7 @@ import type { CustomTranslationsKeys, CustomTranslationsObject } from 'src/trans
 import './modal.scss'
 
 import type {
+  CollectionContext,
   CommandMenuContextProps,
   CommandMenuGroup,
   CommandMenuItem,
@@ -95,46 +96,60 @@ const CommandMenuComponent: React.FC<{
   const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
 
-  // Detect which collection the user is currently viewing (if any)
-  const currentCollectionSlug = useMemo(() => {
-    if (!pathname) return null
-    const match = pathname.match(/\/admin\/collections\/([^/]+)/)
-    return match?.[1] ?? null
+  // Detect which collection the user is currently viewing (if any) and whether
+  // they are on the list page or a specific document/create page.
+  const { currentCollectionSlug, isDocumentContext } = useMemo(() => {
+    if (!pathname) return { currentCollectionSlug: null, isDocumentContext: false }
+    // Group 1 = collection slug, Group 2 (optional) = document ID or 'create'
+    const match = pathname.match(/\/admin\/collections\/([^/]+)(?:\/([^/]+))?/)
+    return {
+      currentCollectionSlug: match?.[1] ?? null,
+      isDocumentContext: match?.[2] != null,
+    }
   }, [pathname])
+
+  /** Returns true if an item/group should be visible given the current route. */
+  const isEntryVisible = useCallback(
+    (entry: {
+      collectionContext?: CollectionContext
+      collectionSlugs?: readonly string[] | string[]
+    }): boolean => {
+      // --- collectionSlugs filter ---
+      if (entry.collectionSlugs && entry.collectionSlugs.length > 0) {
+        if (
+          currentCollectionSlug === null ||
+          !(entry.collectionSlugs as string[]).includes(currentCollectionSlug)
+        ) {
+          return false
+        }
+      }
+      // --- collectionContext filter ---
+      if (entry.collectionContext && entry.collectionContext !== 'both') {
+        // context filter only makes sense on a collection page
+        if (currentCollectionSlug === null) return false
+        if (entry.collectionContext === 'list' && isDocumentContext) return false
+        if (entry.collectionContext === 'document' && !isDocumentContext) return false
+      }
+      return true
+    },
+    [currentCollectionSlug, isDocumentContext],
+  )
 
   // Filter groups to only those visible on the current page
   const visibleGroups = useMemo(() => {
     return groups
-      .filter((group) => {
-        if (!group.collectionSlugs || group.collectionSlugs.length === 0) return true
-        return (
-          currentCollectionSlug !== null &&
-          (group.collectionSlugs as string[]).includes(currentCollectionSlug)
-        )
-      })
+      .filter((group) => isEntryVisible(group))
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => {
-          if (!item.collectionSlugs || item.collectionSlugs.length === 0) return true
-          return (
-            currentCollectionSlug !== null &&
-            (item.collectionSlugs as string[]).includes(currentCollectionSlug)
-          )
-        }),
+        items: group.items.filter((item) => isEntryVisible(item)),
       }))
       .filter((group) => group.items.length > 0)
-  }, [groups, currentCollectionSlug])
+  }, [groups, isEntryVisible])
 
   // Filter stray items to only those visible on the current page
   const visibleItems = useMemo(() => {
-    return items.filter((item) => {
-      if (!item.collectionSlugs || item.collectionSlugs.length === 0) return true
-      return (
-        currentCollectionSlug !== null &&
-        (item.collectionSlugs as string[]).includes(currentCollectionSlug)
-      )
-    })
-  }, [items, currentCollectionSlug])
+    return items.filter((item) => isEntryVisible(item))
+  }, [items, isEntryVisible])
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
