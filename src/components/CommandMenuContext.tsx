@@ -242,38 +242,41 @@ const CommandMenuComponent: React.FC<{
 
   const executeItemAction = useCallback(
     async (item: CommandMenuItem) => {
-      // Execute the item's action
-      switch (item.action.type) {
-        case 'api':
-          await fetch(item.action.href, {
-            body: item.action.body ? JSON.stringify(item.action.body) : undefined,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            method: item.action.method || 'GET',
-          })
-          break
-        case 'function': {
-          const handler = getCommandMenuAction(item.action.key)
-          if (handler) {
-            await handler()
-          } else {
-            console.warn(
-              `[payload-cmdk] No handler registered for function action key "${item.action.key}". ` +
-                `Call registerCommandMenuAction("${item.action.key}", fn) on the client.`,
-            )
+      try {
+        // Execute the item's action
+        switch (item.action.type) {
+          case 'api':
+            await fetch(item.action.href, {
+              body: item.action.body ? JSON.stringify(item.action.body) : undefined,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              method: item.action.method || 'GET',
+            })
+            break
+          case 'function': {
+            const handler = getCommandMenuAction(item.action.key)
+            if (handler) {
+              await handler()
+            } else {
+              console.warn(
+                `[payload-cmdk] No handler registered for function action key "${item.action.key}". ` +
+                  `Call registerCommandMenuAction("${item.action.key}", fn) on the client.`,
+              )
+            }
+            break
           }
-          break
+          case 'link':
+            startRouteTransition(() => router.push(item.action.href))
+            break
+          default:
+            break
         }
-        case 'link':
-          startRouteTransition(() => router.push(item.action.href))
-          break
-        default:
-          break
+      } finally {
+        closeMenu()
+        setSearch('')
+        setPage('main')
       }
-      closeMenu()
-      setSearch('')
-      setPage('main')
     },
     [router, closeMenu, setPage, startRouteTransition],
   )
