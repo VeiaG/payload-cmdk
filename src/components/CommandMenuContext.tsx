@@ -107,13 +107,19 @@ const CommandMenuComponent: React.FC<{
     return groups
       .filter((group) => {
         if (!group.collectionSlugs || group.collectionSlugs.length === 0) return true
-        return currentCollectionSlug && group.collectionSlugs.includes(currentCollectionSlug as never)
+        return (
+          currentCollectionSlug !== null &&
+          (group.collectionSlugs as string[]).includes(currentCollectionSlug)
+        )
       })
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => {
           if (!item.collectionSlugs || item.collectionSlugs.length === 0) return true
-          return currentCollectionSlug && item.collectionSlugs.includes(currentCollectionSlug as never)
+          return (
+            currentCollectionSlug !== null &&
+            (item.collectionSlugs as string[]).includes(currentCollectionSlug)
+          )
         }),
       }))
       .filter((group) => group.items.length > 0)
@@ -123,7 +129,10 @@ const CommandMenuComponent: React.FC<{
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
       if (!item.collectionSlugs || item.collectionSlugs.length === 0) return true
-      return currentCollectionSlug && item.collectionSlugs.includes(currentCollectionSlug as never)
+      return (
+        currentCollectionSlug !== null &&
+        (item.collectionSlugs as string[]).includes(currentCollectionSlug)
+      )
     })
   }, [items, currentCollectionSlug])
 

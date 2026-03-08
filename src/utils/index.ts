@@ -228,6 +228,7 @@ export const createDefaultGroups = (
         if (!avaibleGroups.has(convertedGroup.title)) {
           avaibleGroups.add(convertedGroup.title)
           groups.push({
+            collectionSlugs: convertedGroup.collectionSlugs,
             items: [], //Don't add items yet, will do below
             title: convertedGroup.title,
           })
