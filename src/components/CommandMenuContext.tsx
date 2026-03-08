@@ -16,7 +16,7 @@ import type {
 
 import { Modal, useConfig, useModal, useRouteTransition, useTranslation } from '@payloadcms/ui'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   createContext,
   Fragment,
@@ -31,6 +31,7 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { createDefaultGroups } from '../utils/index'
+import { getCommandMenuAction } from '../utils/registry'
 import {
   Command,
   CommandEmpty,
@@ -90,8 +91,41 @@ const CommandMenuComponent: React.FC<{
 
   const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
   const router = useRouter()
+  const pathname = usePathname()
   const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
+
+  // Detect which collection the user is currently viewing (if any)
+  const currentCollectionSlug = useMemo(() => {
+    if (!pathname) return null
+    const match = pathname.match(/\/admin\/collections\/([^/]+)/)
+    return match?.[1] ?? null
+  }, [pathname])
+
+  // Filter groups to only those visible on the current page
+  const visibleGroups = useMemo(() => {
+    return groups
+      .filter((group) => {
+        if (!group.collectionSlugs || group.collectionSlugs.length === 0) return true
+        return currentCollectionSlug && group.collectionSlugs.includes(currentCollectionSlug as never)
+      })
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          if (!item.collectionSlugs || item.collectionSlugs.length === 0) return true
+          return currentCollectionSlug && item.collectionSlugs.includes(currentCollectionSlug as never)
+        }),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [groups, currentCollectionSlug])
+
+  // Filter stray items to only those visible on the current page
+  const visibleItems = useMemo(() => {
+    return items.filter((item) => {
+      if (!item.collectionSlugs || item.collectionSlugs.length === 0) return true
+      return currentCollectionSlug && item.collectionSlugs.includes(currentCollectionSlug as never)
+    })
+  }, [items, currentCollectionSlug])
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
@@ -195,6 +229,18 @@ const CommandMenuComponent: React.FC<{
             method: item.action.method || 'GET',
           })
           break
+        case 'function': {
+          const handler = getCommandMenuAction(item.action.key)
+          if (handler) {
+            await handler()
+          } else {
+            console.warn(
+              `[payload-cmdk] No handler registered for function action key "${item.action.key}". ` +
+                `Call registerCommandMenuAction("${item.action.key}", fn) on the client.`,
+            )
+          }
+          break
+        }
         case 'link':
           startRouteTransition(() => router.push(item.action.href))
           break
@@ -260,7 +306,7 @@ const CommandMenuComponent: React.FC<{
             e.stopPropagation()
 
             // Find the item in groups
-            const item = groups.flatMap((g) => g.items).find((i) => i.slug === itemSlug)
+            const item = visibleGroups.flatMap((g) => g.items).find((i) => i.slug === itemSlug)
             if (item) {
               openSubmenu(item)
             }
@@ -272,7 +318,7 @@ const CommandMenuComponent: React.FC<{
 
     document.addEventListener('keydown', handleKeyDown, true)
     return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [currentPage, handleBack, submenuEnabled, submenuShortcut, openSubmenu, groups])
+  }, [currentPage, handleBack, submenuEnabled, submenuShortcut, openSubmenu, visibleGroups])
 
   const placeholder =
     currentPage === 'main'
@@ -334,7 +380,7 @@ const CommandMenuComponent: React.FC<{
 
             {/* Main page view */}
             {currentPage === 'main' &&
-              groups.map((group, index) => {
+              visibleGroups.map((group, index) => {
                 if (group.items.length === 0) {
                   return null
                 }
@@ -347,7 +393,7 @@ const CommandMenuComponent: React.FC<{
                   titleName = t('general:globals')
                 }
 
-                const isRenderSeparator = !(index === groups.length - 1 && items.length === 0)
+                const isRenderSeparator = !(index === visibleGroups.length - 1 && visibleItems.length === 0)
                 return (
                   <Fragment key={group.title}>
                     <CommandGroup heading={titleName}>
@@ -386,7 +432,7 @@ const CommandMenuComponent: React.FC<{
 
             {/* Stray items on main page */}
             {currentPage === 'main' &&
-              items?.map((item) => {
+              visibleItems?.map((item) => {
                 const isDynamicIcon = typeof item.icon === 'string'
                 const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
                 return (

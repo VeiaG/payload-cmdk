@@ -13,6 +13,12 @@ export type InternalIcon = IconName | LucideIcon
  */
 export type CustomMenuItem = {
   action: CommandMenuAction
+  /**
+   * Restrict this item to only appear when the user is on one of these collection pages.
+   * Matches against the current route (e.g. `/admin/collections/{slug}`).
+   * If omitted or empty, the item appears on all pages.
+   */
+  collectionSlugs?: CollectionSlug[]
   icon?: IconName
   label: LocalizedString
   slug: string
@@ -26,6 +32,12 @@ export type CustomMenuItem = {
  * Groups will be merged if they have the same title.
  */
 export type CustomMenuGroup = {
+  /**
+   * Restrict this group to only appear when the user is on one of these collection pages.
+   * Matches against the current route (e.g. `/admin/collections/{slug}`).
+   * If omitted or empty, the group appears on all pages.
+   */
+  collectionSlugs?: CollectionSlug[]
   items: CustomMenuItem[]
   title: LocalizedString
   type: 'group'
@@ -159,13 +171,42 @@ export interface CommandMenuActionAPICall {
   type: 'api'
 }
 
-export type CommandMenuAction = CommandMenuActionAPICall | CommandMenuActionLink
+/**
+ * Calls a function registered via `registerCommandMenuAction(key, fn)` on the client.
+ * Since the plugin config is serialized across the server→client boundary, functions
+ * cannot be passed directly — use a string key to reference a registered handler instead.
+ *
+ * @example
+ * // In payload.config.ts:
+ * action: { type: 'function', key: 'save-current-doc' }
+ *
+ * // In your client-side code:
+ * import { registerCommandMenuAction } from '@veiag/payload-cmdk/client'
+ * registerCommandMenuAction('save-current-doc', () => { ... })
+ */
+export interface CommandMenuActionFunction {
+  /**
+   * Key used to look up the registered handler via `registerCommandMenuAction`.
+   */
+  key: string
+  type: 'function'
+}
+
+export type CommandMenuAction =
+  | CommandMenuActionAPICall
+  | CommandMenuActionFunction
+  | CommandMenuActionLink
 
 export interface CommandMenuItem {
   /**
    * Action to perform when the command menu item is selected.
    */
   action: CommandMenuAction
+  /**
+   * Restrict this item to only appear when the user is on one of these collection pages.
+   * Populated from `CustomMenuItem.collectionSlugs`.
+   */
+  collectionSlugs?: CollectionSlug[]
   icon?: InternalIcon
   label: string
   slug: string
@@ -191,6 +232,11 @@ export interface CommandMenuItem {
 }
 
 export interface CommandMenuGroup {
+  /**
+   * Restrict this group to only appear when the user is on one of these collection pages.
+   * Populated from `CustomMenuGroup.collectionSlugs`.
+   */
+  collectionSlugs?: CollectionSlug[]
   items: CommandMenuItem[]
   title: string
 }
