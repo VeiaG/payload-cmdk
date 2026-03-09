@@ -9,12 +9,19 @@ export type InternalIcon = IconName | LucideIcon
 
 /**
  * Controls which context within a collection a custom item/group is visible in.
+ * Pass an array with one or both values:
  *
- * - `'list'`     — only on the collection list page     (`/admin/collections/{slug}`)
- * - `'document'` — only on a document edit/create page  (`/admin/collections/{slug}/{id|create}`)
- * - `'both'`     — on both (default)
+ * - `'list'`     — collection list page      (`/admin/collections/{slug}`)
+ * - `'document'` — document edit/create page (`/admin/collections/{slug}/{id|create}`)
+ *
+ * Omit the field (or pass both values) to show in all contexts.
+ *
+ * @example
+ * collectionContext: ['list']              // list page only
+ * collectionContext: ['document']          // document page only
+ * collectionContext: ['list', 'document']  // both (same as omitting)
  */
-export type CollectionContext = 'both' | 'document' | 'list'
+export type CollectionContext = ('document' | 'list')[]
 
 /**
  * Custom menu item, for configuration.
@@ -23,15 +30,16 @@ export type CollectionContext = 'both' | 'document' | 'list'
 export type CustomMenuItem = {
   action: CommandMenuAction
   /**
-   * Further restrict visibility within a matching collection.
-   * Only meaningful when `collectionSlugs` is also set (or when you want the item to appear
-   * on a specific context across all collections).
+   * Restrict visibility to specific contexts within a collection page.
+   * Pass an array with one or both values — omit to show in all contexts.
    *
-   * - `'list'`     — only on the collection list page
-   * - `'document'` — only on a document edit / create page
-   * - `'both'`     — on both (default)
+   * - `'list'`     — collection list page      (`/admin/collections/{slug}`)
+   * - `'document'` — document edit/create page (`/admin/collections/{slug}/{id|create}`)
    *
-   * @default 'both'
+   * @example
+   * collectionContext: ['list']              // list page only
+   * collectionContext: ['document']          // document page only
+   * collectionContext: ['list', 'document']  // both (same as omitting)
    */
   collectionContext?: CollectionContext
   /**
@@ -54,15 +62,16 @@ export type CustomMenuItem = {
  */
 export type CustomMenuGroup = {
   /**
-   * Further restrict visibility within a matching collection.
-   * Only meaningful when `collectionSlugs` is also set (or when you want the group to appear
-   * on a specific context across all collections).
+   * Restrict visibility to specific contexts within a collection page.
+   * Pass an array with one or both values — omit to show in all contexts.
    *
-   * - `'list'`     — only on the collection list page
-   * - `'document'` — only on a document edit / create page
-   * - `'both'`     — on both (default)
+   * - `'list'`     — collection list page      (`/admin/collections/{slug}`)
+   * - `'document'` — document edit/create page (`/admin/collections/{slug}/{id|create}`)
    *
-   * @default 'both'
+   * @example
+   * collectionContext: ['list']              // list page only
+   * collectionContext: ['document']          // document page only
+   * collectionContext: ['list', 'document']  // both (same as omitting)
    */
   collectionContext?: CollectionContext
   /**

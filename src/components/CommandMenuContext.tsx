@@ -124,11 +124,11 @@ const CommandMenuComponent: React.FC<{
         }
       }
       // --- collectionContext filter ---
-      if (entry.collectionContext && entry.collectionContext !== 'both') {
+      if (entry.collectionContext && entry.collectionContext.length > 0) {
         // context filter only makes sense on a collection page
         if (currentCollectionSlug === null) return false
-        if (entry.collectionContext === 'list' && isDocumentContext) return false
-        if (entry.collectionContext === 'document' && !isDocumentContext) return false
+        const currentContext = isDocumentContext ? 'document' : 'list'
+        if (!entry.collectionContext.includes(currentContext)) return false
       }
       return true
     },

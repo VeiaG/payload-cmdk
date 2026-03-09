@@ -368,6 +368,71 @@ customItems: [
 ]
 ```
 
+#### `collectionContext` — Restrict to list or document pages
+
+Use `collectionContext` on any item or group to control exactly where inside a collection it appears.
+
+- **Type:** `('document' | 'list')[]`
+- **Default:** not set (appears on all pages)
+
+| Value | Where it appears |
+|-------|-----------------|
+| `'list'` | Collection list page — e.g. `/admin/collections/posts` |
+| `'document'` | Document edit or create page — e.g. `/admin/collections/posts/abc123` or `/admin/collections/posts/create` |
+
+Pass both values, or omit the field entirely, to show the item on all collection pages.
+
+`collectionContext` can be combined with `collectionSlugs` to target a specific collection **and** a specific page context, or used alone to apply to all collections.
+
+**Examples:**
+
+```typescript
+customItems: [
+  // Only on the posts list page
+  {
+    type: 'item',
+    slug: 'import-posts',
+    label: 'Import Posts',
+    icon: 'Upload',
+    collectionSlugs: ['posts'],
+    collectionContext: ['list'],
+    action: { type: 'function', key: 'import-posts' },
+  },
+
+  // Only when editing or creating a post
+  {
+    type: 'item',
+    slug: 'save-post',
+    label: 'Save Post',
+    icon: 'Save',
+    collectionSlugs: ['posts'],
+    collectionContext: ['document'],
+    action: { type: 'function', key: 'save-current-doc' },
+  },
+
+  // On any document edit/create page across all collections
+  {
+    type: 'item',
+    slug: 'copy-link',
+    label: 'Copy Document Link',
+    icon: 'Link',
+    collectionContext: ['document'],
+    action: { type: 'function', key: 'copy-doc-link' },
+  },
+
+  // On both list and document pages (same as omitting collectionContext)
+  {
+    type: 'item',
+    slug: 'help',
+    label: 'Open Help',
+    icon: 'HelpCircle',
+    collectionSlugs: ['posts'],
+    collectionContext: ['list', 'document'],
+    action: { type: 'link', href: '/docs' },
+  },
+]
+```
+
 ### `slugsToIgnore`
 
 Specify which collection/global slugs to exclude from the command menu.
