@@ -304,69 +304,200 @@ Add custom menu items and groups to the command menu.
 ```typescript
 {
   type: 'item',
-  slug: 'unique-slug',
-  label: 'Item Label', // Can be localized
-  icon: 'LucideIconName', // Optional, from lucide.dev/icons
-  action: {
-    type: 'link' | 'api',
-    href: '/path/or/url',
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE', // For API actions
-    body?: { key: 'value' } // For API actions
-  }
+  slug: 'unique-slug',           // Must be unique across all items
+  label: 'Item Label',           // Can be a localized object — see Localization below
+  icon: 'LucideIconName',        // Optional, from lucide.dev/icons
+  collectionSlugs: ['posts'],    // Optional — only show on these collection pages
+  collectionContext: ['list'],   // Optional — 'list', 'document', or both
+  action: { ... }                // See Action Types below
 }
 ```
 
 #### Custom Menu Group
 
+Groups are rendered with a heading and can contain multiple items. Groups with identical titles are automatically merged.
+
 ```typescript
 {
   type: 'group',
-  title: 'Group Title', // Can be localized
+  title: 'Group Title',          // Can be a localized object
+  collectionSlugs: ['posts'],    // Optional — only show on these collection pages
+  collectionContext: ['list'],   // Optional
   items: [
     // Array of CustomMenuItem
   ]
 }
 ```
 
-**Example with localization:**
+---
+
+#### Action Types
+
+Every item requires an `action` that determines what happens when the item is selected.
+
+##### `link` — Navigate to a URL
+
+Navigates to a URL. Supports both internal paths and external URLs.
 
 ```typescript
+action: {
+  type: 'link',
+  href: '/admin/collections/posts', // or 'https://your-site.com'
+}
+```
+
+##### `api` — Call an API endpoint
+
+Makes an HTTP request when the item is selected. The menu closes after the request completes (or fails).
+
+```typescript
+action: {
+  type: 'api',
+  href: '/api/cache/clear',
+  method: 'POST',              // 'GET' | 'POST' | 'PUT' | 'DELETE' — default: 'GET'
+  body: { scope: 'all' },      // Optional JSON body
+}
+```
+
+##### `function` — Call a client-side handler
+
+Because the plugin config is serialized across the Next.js server→client boundary, functions cannot live directly in `payload.config.ts`. Instead, you reference a handler by a **string key** in the config and register the actual function on the client.
+
+**Step 1 — reference the key in your config:**
+
+```typescript
+// payload.config.ts
 customItems: [
   {
-    type: 'group',
-    title: {
-      en: 'Quick Actions',
-      uk: 'Швидкі дії',
+    type: 'item',
+    slug: 'save-document',
+    label: 'Save Document',
+    icon: 'Save',
+    collectionContext: ['document'],
+    action: {
+      type: 'function',
+      key: 'save-current-doc',   // Must match the key used in registerCommandMenuAction
     },
-    items: [
-      {
-        type: 'item',
-        slug: 'view-site',
-        label: {
-          en: 'View Site',
-          uk: 'Переглянути сайт',
-        },
-        icon: 'ExternalLink',
-        action: {
-          type: 'link',
-          href: 'https://your-site.com',
-        },
-      },
-      {
-        type: 'item',
-        slug: 'regenerate',
-        label: 'Regenerate Cache',
-        icon: 'RefreshCw',
-        action: {
-          type: 'api',
-          method: 'POST',
-          href: '/api/cache/regenerate',
-        },
-      },
-    ],
   },
 ]
 ```
+
+**Step 2 — register the handler in a client component:**
+
+```typescript
+// e.g. app/(payload)/layout.tsx  or  a custom admin component
+'use client'
+import { registerCommandMenuAction, unregisterCommandMenuAction } from '@veiag/payload-cmdk/client'
+import { useEffect } from 'react'
+
+export default function AdminLayout({ children }) {
+  useEffect(() => {
+    registerCommandMenuAction('save-current-doc', () => {
+      // Submit the currently active form (Payload's save button)
+      document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+    })
+
+    // Clean up when the component unmounts
+    return () => unregisterCommandMenuAction('save-current-doc')
+  }, [])
+
+  return <>{children}</>
+}
+```
+
+The handler can be synchronous or return a `Promise`. The menu always closes after it resolves (or throws).
+
+**Full example with multiple function actions:**
+
+```typescript
+// payload.config.ts
+customItems: [
+  {
+    type: 'group',
+    title: 'Document Actions',
+    collectionContext: ['document'],
+    items: [
+      {
+        type: 'item',
+        slug: 'save-document',
+        label: 'Save Document',
+        icon: 'Save',
+        action: { type: 'function', key: 'save-current-doc' },
+      },
+      {
+        type: 'item',
+        slug: 'copy-doc-link',
+        label: 'Copy Document Link',
+        icon: 'Link',
+        action: { type: 'function', key: 'copy-doc-link' },
+      },
+    ],
+  },
+  {
+    type: 'item',
+    slug: 'import-posts',
+    label: 'Import Posts',
+    icon: 'Upload',
+    collectionSlugs: ['posts'],
+    collectionContext: ['list'],
+    action: { type: 'function', key: 'import-posts' },
+  },
+]
+```
+
+```typescript
+// Client component / layout
+'use client'
+import { registerCommandMenuAction, unregisterCommandMenuAction } from '@veiag/payload-cmdk/client'
+import { useEffect } from 'react'
+
+export default function AdminLayout({ children }) {
+  useEffect(() => {
+    registerCommandMenuAction('save-current-doc', () => {
+      document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+    })
+
+    registerCommandMenuAction('copy-doc-link', () => {
+      navigator.clipboard.writeText(window.location.href)
+    })
+
+    registerCommandMenuAction('import-posts', async () => {
+      await fetch('/api/posts/import', { method: 'POST' })
+    })
+
+    return () => {
+      unregisterCommandMenuAction('save-current-doc')
+      unregisterCommandMenuAction('copy-doc-link')
+      unregisterCommandMenuAction('import-posts')
+    }
+  }, [])
+
+  return <>{children}</>
+}
+```
+
+> **Note:** If a key is used in the config but no handler has been registered, the plugin logs a warning to the console and the menu still closes normally.
+
+---
+
+#### `collectionSlugs` — Restrict to specific collections
+
+Show an item or group only when the user is viewing a particular collection.
+
+```typescript
+{
+  type: 'item',
+  slug: 'export-posts',
+  label: 'Export Posts',
+  icon: 'Download',
+  collectionSlugs: ['posts'],         // only visible on /admin/collections/posts/*
+  action: { type: 'function', key: 'export-posts' },
+}
+```
+
+Omit `collectionSlugs` (or pass an empty array) to show the item on all pages, including non-collection pages.
+
+---
 
 #### `collectionContext` — Restrict to list or document pages
 
@@ -429,6 +560,48 @@ customItems: [
     collectionSlugs: ['posts'],
     collectionContext: ['list', 'document'],
     action: { type: 'link', href: '/docs' },
+  },
+]
+```
+
+---
+
+**Example with localization:**
+
+```typescript
+customItems: [
+  {
+    type: 'group',
+    title: {
+      en: 'Quick Actions',
+      uk: 'Швидкі дії',
+    },
+    items: [
+      {
+        type: 'item',
+        slug: 'view-site',
+        label: {
+          en: 'View Site',
+          uk: 'Переглянути сайт',
+        },
+        icon: 'ExternalLink',
+        action: {
+          type: 'link',
+          href: 'https://your-site.com',
+        },
+      },
+      {
+        type: 'item',
+        slug: 'regenerate',
+        label: 'Regenerate Cache',
+        icon: 'RefreshCw',
+        action: {
+          type: 'api',
+          method: 'POST',
+          href: '/api/cache/regenerate',
+        },
+      },
+    ],
   },
 ]
 ```
