@@ -249,7 +249,7 @@ const CommandMenuComponent: React.FC<{
 
     const timeoutId = setTimeout(fetchDocuments, 300)
     return () => clearTimeout(timeoutId)
-  }, [search, currentPage, pluginConfig?.submenu?.icons])
+  }, [search, currentPage, pluginConfig?.submenu?.icons, adminRoute])
 
   const handleBack = useCallback(() => {
     setPage('main')
@@ -282,6 +282,7 @@ const CommandMenuComponent: React.FC<{
             if (handler) {
               await handler()
             } else {
+              //eslint-disable-next-line no-console
               console.warn(
                 `[payload-cmdk] No handler registered for function action key "${item.action.key}". ` +
                   `Call registerCommandMenuAction("${item.action.key}", fn) on the client.`,
@@ -289,9 +290,11 @@ const CommandMenuComponent: React.FC<{
             }
             break
           }
-          case 'link':
-            startRouteTransition(() => router.push(item.action.href))
+          case 'link': {
+            const href = item.action.href
+            startRouteTransition(() => router.push(href))
             break
+          }
           default:
             break
         }
