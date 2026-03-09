@@ -95,18 +95,24 @@ const CommandMenuComponent: React.FC<{
   const pathname = usePathname()
   const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
+  const { config } = useConfig()
 
   // Detect which collection the user is currently viewing (if any) and whether
   // they are on the list page or a specific document/create page.
+  // Use the configured admin route instead of hardcoding '/admin' so that
+  // projects with a custom adminRoute still match correctly.
   const { currentCollectionSlug, isDocumentContext } = useMemo(() => {
     if (!pathname) return { currentCollectionSlug: null, isDocumentContext: false }
+    const adminRoute = config.routes?.admin ?? '/admin'
+    // Escape any regex special characters in the admin route path
+    const escapedRoute = adminRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     // Group 1 = collection slug, Group 2 (optional) = document ID or 'create'
-    const match = pathname.match(/\/admin\/collections\/([^/]+)(?:\/([^/]+))?/)
+    const match = pathname.match(new RegExp(`${escapedRoute}/collections/([^/]+)(?:/([^/]+))?`))
     return {
       currentCollectionSlug: match?.[1] ?? null,
       isDocumentContext: match?.[2] != null,
     }
-  }, [pathname])
+  }, [pathname, config.routes?.admin])
 
   /** Returns true if an item/group should be visible given the current route. */
   const isEntryVisible = useCallback(
@@ -245,15 +251,21 @@ const CommandMenuComponent: React.FC<{
       try {
         // Execute the item's action
         switch (item.action.type) {
-          case 'api':
-            await fetch(item.action.href, {
+          case 'api': {
+            const response = await fetch(item.action.href, {
               body: item.action.body ? JSON.stringify(item.action.body) : undefined,
               headers: {
                 'Content-Type': 'application/json',
               },
               method: item.action.method || 'GET',
             })
+            if (!response.ok) {
+              throw new Error(
+                `[payload-cmdk] API action failed: ${response.status} ${response.statusText}`,
+              )
+            }
             break
+          }
           case 'function': {
             const handler = getCommandMenuAction(item.action.key)
             if (handler) {
