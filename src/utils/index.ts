@@ -9,6 +9,7 @@ import type {
 } from 'src/types'
 
 import { Files, Globe } from 'lucide-react'
+import { formatAdminURL } from 'payload/shared'
 
 export const convertSlugToTitle = (slug: string): string => {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
@@ -104,6 +105,9 @@ const DEFAULT_SLUGS_TO_IGNORE: string[] = [
   'payload-migrations',
   'payload-preferences',
   'payload-locked-documents',
+  'payload-folders',
+  'payload-kvs',
+  'payload-jobs',
 ]
 export const createDefaultGroups = (
   config: ClientConfig,
@@ -121,6 +125,8 @@ export const createDefaultGroups = (
   const items: CommandMenuItem[] = []
   const avaibleGroups = new Set<string>() //To avoid duplicates
   let slugsToIgnore = [...DEFAULT_SLUGS_TO_IGNORE]
+
+  const adminRoute = config.routes?.admin ?? '/admin'
 
   //Handle slugs to ignore from plugin config
   if (pluginConfig?.slugsToIgnore) {
@@ -178,7 +184,7 @@ export const createDefaultGroups = (
           type: 'collection',
           action: {
             type: 'link',
-            href: `/admin/collections/${collection.slug}`,
+            href: formatAdminURL({ adminRoute, path: `/collections/${collection.slug}` }),
           },
           //Either custom icon from plugin config, or default Files icon
           icon: pluginConfig?.icons?.collections?.[collection.slug] || Files,
@@ -211,7 +217,7 @@ export const createDefaultGroups = (
           type: 'global',
           action: {
             type: 'link',
-            href: `/admin/globals/${global.slug}`,
+            href: formatAdminURL({ adminRoute, path: `/globals/${global.slug}` }),
           },
           //Either custom icon from plugin config, or default Globe icon
           icon: pluginConfig?.icons?.globals?.[global.slug] || Globe,

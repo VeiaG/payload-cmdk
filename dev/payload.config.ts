@@ -33,6 +33,9 @@ const buildConfigWithMemoryDB = async () => {
 
   return buildConfig({
     admin: {
+      components: {
+        providers: ['./app/(payload)/admin/components/CommandMenuHandlers#default'],
+      },
       importMap: {
         baseDir: path.resolve(dirname),
       },
@@ -239,6 +242,7 @@ const buildConfigWithMemoryDB = async () => {
     plugins: [
       payloadCmdk({
         customItems: [
+          // ── Existing items ────────────────────────────────────────────────
           {
             slug: 'view-site',
             type: 'item',
@@ -285,6 +289,106 @@ const buildConfigWithMemoryDB = async () => {
             title: {
               en: 'Quick Actions',
               uk: 'Швидкі дії',
+            },
+          },
+
+          // ── NEW: collectionContext — document pages only (all collections) ─
+          {
+            type: 'group',
+            collectionContext: ['document'],
+            items: [
+              {
+                slug: 'save-document',
+                type: 'item',
+                action: { type: 'function', key: 'save-current-doc' },
+                collectionContext: ['document'],
+                icon: 'Save',
+                label: {
+                  en: 'Save Document',
+                  uk: 'Зберегти документ',
+                },
+              },
+              {
+                slug: 'copy-doc-link',
+                type: 'item',
+                action: { type: 'function', key: 'copy-doc-link' },
+                collectionContext: ['document'],
+                icon: 'Link',
+                label: {
+                  en: 'Copy Document Link',
+                  uk: 'Скопіювати посилання',
+                },
+              },
+              {
+                slug: 'print-page',
+                type: 'item',
+                action: { type: 'function', key: 'print-page' },
+                collectionContext: ['document'],
+                icon: 'Printer',
+                label: {
+                  en: 'Print Page',
+                  uk: 'Друк сторінки',
+                },
+              },
+            ],
+            title: {
+              en: 'Document Actions (doc only)',
+              uk: 'Дії з документом (тільки документ)',
+            },
+          },
+
+          // ── NEW: collectionContext list + collectionSlugs — posts list only ─
+          {
+            slug: 'import-posts',
+            type: 'item',
+            action: { type: 'function', key: 'import-posts' },
+            collectionContext: ['list'],
+            collectionSlugs: ['posts'],
+            icon: 'Upload',
+            label: {
+              en: 'Import Posts (list only)',
+              uk: 'Імпорт постів (тільки список)',
+            },
+          },
+
+          // ── NEW: collectionContext list only — all collections ─────────────
+          {
+            slug: 'create-new-link',
+            type: 'item',
+            action: { type: 'link', href: '#' },
+            collectionContext: ['list'],
+            icon: 'CirclePlus',
+            label: {
+              en: 'List-only link item',
+              uk: 'Тільки у списку (посилання)',
+            },
+          },
+
+          // ── NEW: collectionSlugs without collectionContext — posts & pages ──
+          {
+            slug: 'posts-and-pages-only',
+            type: 'item',
+            action: {
+              type: 'link',
+              href: 'https://payloadcms.com/docs',
+            },
+            collectionSlugs: ['posts', 'pages'],
+            icon: 'FileSearch',
+            label: {
+              en: 'Visible on Posts & Pages only',
+              uk: 'Тільки для Posts & Pages',
+            },
+          },
+
+          // ── NEW: function action with unregistered key (should warn in console) ─
+          {
+            slug: 'unregistered-fn',
+            type: 'item',
+            action: { type: 'function', key: 'this-key-is-not-registered' },
+            icon: 'TriangleAlert',
+            label: {
+              en: 'Unregistered function (console warn)',
+              uk: 'Незареєстрована функція (попередження)',
             },
           },
         ],
