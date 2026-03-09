@@ -5,6 +5,7 @@ import type { CustomTranslationsKeys, CustomTranslationsObject } from 'src/trans
 import './modal.scss'
 
 import type {
+  CollectionContext,
   CommandMenuContextProps,
   CommandMenuGroup,
   CommandMenuItem,
@@ -16,7 +17,7 @@ import type {
 
 import { Modal, useConfig, useModal, useRouteTransition, useTranslation } from '@payloadcms/ui'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   createContext,
   Fragment,
@@ -31,6 +32,7 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { createDefaultGroups } from '../utils/index'
+import { getCommandMenuAction } from '../utils/registry'
 import {
   Command,
   CommandEmpty,
@@ -90,8 +92,70 @@ const CommandMenuComponent: React.FC<{
 
   const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
   const router = useRouter()
+  const pathname = usePathname()
   const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
+  const { config } = useConfig()
+
+  // Detect which collection the user is currently viewing (if any) and whether
+  // they are on the list page or a specific document/create page.
+  // Use the configured admin route instead of hardcoding '/admin' so that
+  // projects with a custom adminRoute still match correctly.
+  const { currentCollectionSlug, isDocumentContext } = useMemo(() => {
+    if (!pathname) return { currentCollectionSlug: null, isDocumentContext: false }
+    const adminRoute = config.routes?.admin ?? '/admin'
+    // Escape any regex special characters in the admin route path
+    const escapedRoute = adminRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    // Group 1 = collection slug, Group 2 (optional) = document ID or 'create'
+    const match = pathname.match(new RegExp(`${escapedRoute}/collections/([^/]+)(?:/([^/]+))?`))
+    return {
+      currentCollectionSlug: match?.[1] ?? null,
+      isDocumentContext: match?.[2] != null,
+    }
+  }, [pathname, config.routes?.admin])
+
+  /** Returns true if an item/group should be visible given the current route. */
+  const isEntryVisible = useCallback(
+    (entry: {
+      collectionContext?: CollectionContext
+      collectionSlugs?: readonly string[] | string[]
+    }): boolean => {
+      // --- collectionSlugs filter ---
+      if (entry.collectionSlugs && entry.collectionSlugs.length > 0) {
+        if (
+          currentCollectionSlug === null ||
+          !(entry.collectionSlugs as string[]).includes(currentCollectionSlug)
+        ) {
+          return false
+        }
+      }
+      // --- collectionContext filter ---
+      if (entry.collectionContext && entry.collectionContext.length > 0) {
+        // context filter only makes sense on a collection page
+        if (currentCollectionSlug === null) return false
+        const currentContext = isDocumentContext ? 'document' : 'list'
+        if (!entry.collectionContext.includes(currentContext)) return false
+      }
+      return true
+    },
+    [currentCollectionSlug, isDocumentContext],
+  )
+
+  // Filter groups to only those visible on the current page
+  const visibleGroups = useMemo(() => {
+    return groups
+      .filter((group) => isEntryVisible(group))
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => isEntryVisible(item)),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [groups, isEntryVisible])
+
+  // Filter stray items to only those visible on the current page
+  const visibleItems = useMemo(() => {
+    return items.filter((item) => isEntryVisible(item))
+  }, [items, isEntryVisible])
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
@@ -184,26 +248,47 @@ const CommandMenuComponent: React.FC<{
 
   const executeItemAction = useCallback(
     async (item: CommandMenuItem) => {
-      // Execute the item's action
-      switch (item.action.type) {
-        case 'api':
-          await fetch(item.action.href, {
-            body: item.action.body ? JSON.stringify(item.action.body) : undefined,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            method: item.action.method || 'GET',
-          })
-          break
-        case 'link':
-          startRouteTransition(() => router.push(item.action.href))
-          break
-        default:
-          break
+      try {
+        // Execute the item's action
+        switch (item.action.type) {
+          case 'api': {
+            const response = await fetch(item.action.href, {
+              body: item.action.body ? JSON.stringify(item.action.body) : undefined,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              method: item.action.method || 'GET',
+            })
+            if (!response.ok) {
+              throw new Error(
+                `[payload-cmdk] API action failed: ${response.status} ${response.statusText}`,
+              )
+            }
+            break
+          }
+          case 'function': {
+            const handler = getCommandMenuAction(item.action.key)
+            if (handler) {
+              await handler()
+            } else {
+              console.warn(
+                `[payload-cmdk] No handler registered for function action key "${item.action.key}". ` +
+                  `Call registerCommandMenuAction("${item.action.key}", fn) on the client.`,
+              )
+            }
+            break
+          }
+          case 'link':
+            startRouteTransition(() => router.push(item.action.href))
+            break
+          default:
+            break
+        }
+      } finally {
+        closeMenu()
+        setSearch('')
+        setPage('main')
       }
-      closeMenu()
-      setSearch('')
-      setPage('main')
     },
     [router, closeMenu, setPage, startRouteTransition],
   )
@@ -260,7 +345,7 @@ const CommandMenuComponent: React.FC<{
             e.stopPropagation()
 
             // Find the item in groups
-            const item = groups.flatMap((g) => g.items).find((i) => i.slug === itemSlug)
+            const item = visibleGroups.flatMap((g) => g.items).find((i) => i.slug === itemSlug)
             if (item) {
               openSubmenu(item)
             }
@@ -272,7 +357,7 @@ const CommandMenuComponent: React.FC<{
 
     document.addEventListener('keydown', handleKeyDown, true)
     return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [currentPage, handleBack, submenuEnabled, submenuShortcut, openSubmenu, groups])
+  }, [currentPage, handleBack, submenuEnabled, submenuShortcut, openSubmenu, visibleGroups])
 
   const placeholder =
     currentPage === 'main'
@@ -334,7 +419,7 @@ const CommandMenuComponent: React.FC<{
 
             {/* Main page view */}
             {currentPage === 'main' &&
-              groups.map((group, index) => {
+              visibleGroups.map((group, index) => {
                 if (group.items.length === 0) {
                   return null
                 }
@@ -347,7 +432,7 @@ const CommandMenuComponent: React.FC<{
                   titleName = t('general:globals')
                 }
 
-                const isRenderSeparator = !(index === groups.length - 1 && items.length === 0)
+                const isRenderSeparator = !(index === visibleGroups.length - 1 && visibleItems.length === 0)
                 return (
                   <Fragment key={group.title}>
                     <CommandGroup heading={titleName}>
@@ -386,7 +471,7 @@ const CommandMenuComponent: React.FC<{
 
             {/* Stray items on main page */}
             {currentPage === 'main' &&
-              items?.map((item) => {
+              visibleItems?.map((item) => {
                 const isDynamicIcon = typeof item.icon === 'string'
                 const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
                 return (

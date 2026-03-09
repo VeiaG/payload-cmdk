@@ -8,11 +8,46 @@ export type LocalizedString = { [locale: string]: string } | string
 export type InternalIcon = IconName | LucideIcon
 
 /**
+ * Controls which context within a collection a custom item/group is visible in.
+ * Pass an array with one or both values:
+ *
+ * - `'list'`     — collection list page      (`/admin/collections/{slug}`)
+ * - `'document'` — document edit/create page (`/admin/collections/{slug}/{id|create}`)
+ *
+ * Omit the field (or pass both values) to show in all contexts.
+ *
+ * @example
+ * collectionContext: ['list']              // list page only
+ * collectionContext: ['document']          // document page only
+ * collectionContext: ['list', 'document']  // both (same as omitting)
+ */
+export type CollectionContext = ('document' | 'list')[]
+
+/**
  * Custom menu item, for configuration.
  * Will be mapped to CommandMenuItem internally.
  */
 export type CustomMenuItem = {
   action: CommandMenuAction
+  /**
+   * Restrict visibility to specific contexts within a collection page.
+   * Pass an array with one or both values — omit to show in all contexts.
+   *
+   * - `'list'`     — collection list page      (`/admin/collections/{slug}`)
+   * - `'document'` — document edit/create page (`/admin/collections/{slug}/{id|create}`)
+   *
+   * @example
+   * collectionContext: ['list']              // list page only
+   * collectionContext: ['document']          // document page only
+   * collectionContext: ['list', 'document']  // both (same as omitting)
+   */
+  collectionContext?: CollectionContext
+  /**
+   * Restrict this item to only appear when the user is on one of these collection pages.
+   * Matches against the current route (e.g. `/admin/collections/{slug}`).
+   * If omitted or empty, the item appears on all pages.
+   */
+  collectionSlugs?: CollectionSlug[]
   icon?: IconName
   label: LocalizedString
   slug: string
@@ -26,6 +61,25 @@ export type CustomMenuItem = {
  * Groups will be merged if they have the same title.
  */
 export type CustomMenuGroup = {
+  /**
+   * Restrict visibility to specific contexts within a collection page.
+   * Pass an array with one or both values — omit to show in all contexts.
+   *
+   * - `'list'`     — collection list page      (`/admin/collections/{slug}`)
+   * - `'document'` — document edit/create page (`/admin/collections/{slug}/{id|create}`)
+   *
+   * @example
+   * collectionContext: ['list']              // list page only
+   * collectionContext: ['document']          // document page only
+   * collectionContext: ['list', 'document']  // both (same as omitting)
+   */
+  collectionContext?: CollectionContext
+  /**
+   * Restrict this group to only appear when the user is on one of these collection pages.
+   * Matches against the current route (e.g. `/admin/collections/{slug}`).
+   * If omitted or empty, the group appears on all pages.
+   */
+  collectionSlugs?: CollectionSlug[]
   items: CustomMenuItem[]
   title: LocalizedString
   type: 'group'
@@ -159,13 +213,44 @@ export interface CommandMenuActionAPICall {
   type: 'api'
 }
 
-export type CommandMenuAction = CommandMenuActionAPICall | CommandMenuActionLink
+/**
+ * Calls a function registered via `registerCommandMenuAction(key, fn)` on the client.
+ * Since the plugin config is serialized across the server→client boundary, functions
+ * cannot be passed directly — use a string key to reference a registered handler instead.
+ *
+ * @example
+ * // In payload.config.ts:
+ * action: { type: 'function', key: 'save-current-doc' }
+ *
+ * // In your client-side code:
+ * import { registerCommandMenuAction } from '@veiag/payload-cmdk/client'
+ * registerCommandMenuAction('save-current-doc', () => { ... })
+ */
+export interface CommandMenuActionFunction {
+  /**
+   * Key used to look up the registered handler via `registerCommandMenuAction`.
+   */
+  key: string
+  type: 'function'
+}
+
+export type CommandMenuAction =
+  | CommandMenuActionAPICall
+  | CommandMenuActionFunction
+  | CommandMenuActionLink
 
 export interface CommandMenuItem {
   /**
    * Action to perform when the command menu item is selected.
    */
   action: CommandMenuAction
+  /** Populated from `CustomMenuItem.collectionContext`. */
+  collectionContext?: CollectionContext
+  /**
+   * Restrict this item to only appear when the user is on one of these collection pages.
+   * Populated from `CustomMenuItem.collectionSlugs`.
+   */
+  collectionSlugs?: CollectionSlug[]
   icon?: InternalIcon
   label: string
   slug: string
@@ -191,6 +276,13 @@ export interface CommandMenuItem {
 }
 
 export interface CommandMenuGroup {
+  /** Populated from `CustomMenuGroup.collectionContext`. */
+  collectionContext?: CollectionContext
+  /**
+   * Restrict this group to only appear when the user is on one of these collection pages.
+   * Populated from `CustomMenuGroup.collectionSlugs`.
+   */
+  collectionSlugs?: CollectionSlug[]
   items: CommandMenuItem[]
   title: string
 }
