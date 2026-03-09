@@ -18,6 +18,7 @@ import type {
 import { Modal, useConfig, useModal, useRouteTransition, useTranslation } from '@payloadcms/ui'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
+import { formatAdminURL } from 'payload/shared'
 import {
   createContext,
   Fragment,
@@ -102,7 +103,9 @@ const CommandMenuComponent: React.FC<{
   // Use the configured admin route instead of hardcoding '/admin' so that
   // projects with a custom adminRoute still match correctly.
   const { currentCollectionSlug, isDocumentContext } = useMemo(() => {
-    if (!pathname) return { currentCollectionSlug: null, isDocumentContext: false }
+    if (!pathname) {
+      return { currentCollectionSlug: null, isDocumentContext: false }
+    }
     const adminRoute = config.routes?.admin ?? '/admin'
     // Escape any regex special characters in the admin route path
     const escapedRoute = adminRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -132,9 +135,13 @@ const CommandMenuComponent: React.FC<{
       // --- collectionContext filter ---
       if (entry.collectionContext && entry.collectionContext.length > 0) {
         // context filter only makes sense on a collection page
-        if (currentCollectionSlug === null) return false
+        if (currentCollectionSlug === null) {
+          return false
+        }
         const currentContext = isDocumentContext ? 'document' : 'list'
-        if (!entry.collectionContext.includes(currentContext)) return false
+        if (!entry.collectionContext.includes(currentContext)) {
+          return false
+        }
       }
       return true
     },
@@ -195,6 +202,7 @@ const CommandMenuComponent: React.FC<{
     return <>{elements}</>
   }
 
+  const adminRoute = config.routes?.admin ?? '/admin'
   // Debounced search for submenu
   useEffect(() => {
     if (currentPage === 'main') {
@@ -222,7 +230,10 @@ const CommandMenuComponent: React.FC<{
             type: 'custom' as const,
             action: {
               type: 'link',
-              href: `/admin/collections/${currentPage.slug}/${doc.id}`,
+              href: formatAdminURL({
+                adminRoute,
+                path: `/collections/${currentPage.slug}/${doc.id}`,
+              }),
             },
             icon: pluginConfig?.submenu?.icons?.[currentPage.slug] ?? undefined,
             label: doc[currentPage.useAsTitle] || doc.id,
@@ -432,7 +443,9 @@ const CommandMenuComponent: React.FC<{
                   titleName = t('general:globals')
                 }
 
-                const isRenderSeparator = !(index === visibleGroups.length - 1 && visibleItems.length === 0)
+                const isRenderSeparator = !(
+                  index === visibleGroups.length - 1 && visibleItems.length === 0
+                )
                 return (
                   <Fragment key={group.title}>
                     <CommandGroup heading={titleName}>
