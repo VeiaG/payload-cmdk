@@ -40,11 +40,18 @@ export const payloadCmdk =
       config.admin.components.providers = []
     }
 
+    /**
+     * The provider is registered as a Server Component on purpose. It lets Payload hand it
+     * `payload` and `user`, and it lets us hand it `pluginConfig` through `serverProps`,
+     * which are passed along untouched rather than serialized. That is what keeps the
+     * `access` functions on custom items alive: they run there, on the server, and only
+     * the items that survive are sent to the browser.
+     */
     config.admin.components.providers.push({
-      clientProps: {
+      path: '@veiag/payload-cmdk/rsc#CommandMenuProviderServer',
+      serverProps: {
         pluginConfig: pluginOptions,
       },
-      path: '@veiag/payload-cmdk/client#CommandMenuProvider',
     })
 
     if (pluginOptions.searchButton !== false) {

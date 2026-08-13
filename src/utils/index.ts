@@ -1,4 +1,10 @@
-import type { ClientConfig, LabelFunction, TextFieldClient } from 'payload'
+import type {
+  ClientConfig,
+  LabelFunction,
+  SanitizedPermissions,
+  TextFieldClient,
+  VisibleEntities,
+} from 'payload'
 import type {
   CommandMenuGroup,
   CommandMenuItem,
@@ -109,10 +115,40 @@ const DEFAULT_SLUGS_TO_IGNORE: string[] = [
   'payload-kvs',
   'payload-jobs',
 ]
+/**
+ * What the admin is allowed to show this user, in the same two parts Payload's own nav
+ * reads: `permissions` covers `access.read`, `visibleEntities` covers `admin.hidden`.
+ */
+export type EntityAccess = {
+  permissions?: SanitizedPermissions
+  visibleEntities?: VisibleEntities
+}
+
+/**
+ * Whether one collection or global may be listed.
+ *
+ * `permissions` decides access and is always present; `visibleEntities` decides tidiness
+ * and is computed by the plugin's server half. A missing `visibleEntities` therefore
+ * means the server half did not run, not that everything is hidden, so it is applied only
+ * when it actually arrived.
+ */
+const isEntityAllowed = (
+  access: EntityAccess,
+  kind: 'collections' | 'globals',
+  slug: string,
+): boolean => {
+  if (!access.permissions?.[kind]?.[slug]?.read) {
+    return false
+  }
+  const visible = access.visibleEntities?.[kind]
+  return !visible || visible.includes(slug)
+}
+
 export const createDefaultGroups = (
   config: ClientConfig,
   currentLang: string,
   pluginConfig: PluginCommandMenuConfig,
+  access: EntityAccess = {},
 ): {
   groups: CommandMenuGroup[]
   /**
@@ -145,6 +181,12 @@ export const createDefaultGroups = (
   if (config.collections) {
     config.collections.forEach((collection) => {
       if (slugsToIgnore.includes(collection.slug)) {
+        return
+      }
+      // The same pair of conditions Payload's own navigation applies in `getNavGroups`.
+      // Without them the menu offers collections the user cannot read, and opening one
+      // lands on a 403.
+      if (!isEntityAllowed(access, 'collections', collection.slug)) {
         return
       }
 
@@ -199,6 +241,9 @@ export const createDefaultGroups = (
   if (config.globals) {
     config.globals.forEach((global) => {
       if (slugsToIgnore.includes(global.slug)) {
+        return
+      }
+      if (!isEntityAllowed(access, 'globals', global.slug)) {
         return
       }
       //Same logic as collections
