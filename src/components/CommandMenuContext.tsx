@@ -15,7 +15,14 @@ import type {
   PluginCommandMenuConfig,
 } from 'src/types'
 
-import { Modal, useConfig, useModal, useRouteTransition, useTranslation } from '@payloadcms/ui'
+import {
+  Modal,
+  useAuth,
+  useConfig,
+  useModal,
+  useRouteTransition,
+  useTranslation,
+} from '@payloadcms/ui'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatAdminURL } from 'payload/shared'
@@ -560,6 +567,7 @@ const MemoizedCommandMenuComponent = memo(CommandMenuComponent)
 export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
   children,
   pluginConfig,
+  visibleEntities,
 }) => {
   const { closeModal, isModalOpen, openModal, toggleModal } = useModal()
   const [currentPage, setCurrentPage] = useState<CommandMenuPage>('main')
@@ -575,10 +583,11 @@ export const CommandMenuProvider: React.FC<CommandMenuContextProps> = ({
   )
   const { config } = useConfig()
   const { i18n } = useTranslation()
+  const { permissions } = useAuth()
   const currentLang = i18n.language
   const { groups, items } = useMemo(() => {
-    return createDefaultGroups(config, currentLang, pluginConfig)
-  }, [config, currentLang, pluginConfig])
+    return createDefaultGroups(config, currentLang, pluginConfig, { permissions, visibleEntities })
+  }, [config, currentLang, pluginConfig, permissions, visibleEntities])
 
   return (
     <CommandMenuContext.Provider

@@ -1,5 +1,5 @@
 import type { icons, LucideIcon } from 'lucide-react'
-import type { CollectionSlug, GlobalSlug } from 'payload'
+import type { CollectionSlug, GlobalSlug, PayloadRequest, VisibleEntities } from 'payload'
 
 export type IconName = keyof typeof icons
 
@@ -24,10 +24,43 @@ export type InternalIcon = IconName | LucideIcon
 export type CollectionContext = ('document' | 'list')[]
 
 /**
+ * Decides whether one custom item may appear in the menu.
+ *
+ * Runs on the server, once per admin render, so it can hit the Local API through `req`.
+ * Return `false` to drop the item: it never reaches the browser, unlike the route filters
+ * (`collectionSlugs`, `collectionContext`), which only decide when a shipped item shows.
+ *
+ * Denial is the safe answer. If the function throws, the item is dropped.
+ *
+ * @example
+ * access: ({ req }) => req.user?.role === 'admin'
+ */
+export type ItemAccessFunction = (args: {
+  item: CustomMenuItem
+  req: PayloadRequest
+}) => boolean | Promise<boolean>
+
+/**
+ * Decides whether one custom group may appear in the menu.
+ *
+ * Denying a group drops it whole, items included, without consulting their own `access`.
+ * Allowing it still leaves each item to answer for itself.
+ */
+export type GroupAccessFunction = (args: {
+  item: CustomMenuGroup
+  req: PayloadRequest
+}) => boolean | Promise<boolean>
+
+/**
  * Custom menu item, for configuration.
  * Will be mapped to CommandMenuItem internally.
  */
 export type CustomMenuItem = {
+  /**
+   * Server-side check that decides whether this item is shown at all.
+   * Omit to show the item to everyone who can open the menu.
+   */
+  access?: ItemAccessFunction
   action: CommandMenuAction
   /**
    * Restrict visibility to specific contexts within a collection page.
@@ -62,6 +95,11 @@ export type CustomMenuItem = {
  */
 export type CustomMenuGroup = {
   /**
+   * Server-side check that decides whether this group is shown at all.
+   * Omit to show the group to everyone who can open the menu.
+   */
+  access?: GroupAccessFunction
+  /**
    * Restrict visibility to specific contexts within a collection page.
    * Pass an array with one or both values — omit to show in all contexts.
    *
@@ -85,7 +123,11 @@ export type CustomMenuGroup = {
   type: 'group'
 }
 /**
- * Full serializable config for the plugin.
+ * Full config for the plugin.
+ *
+ * Everything here is serializable except the `access` functions on custom items and
+ * groups. Those stay on the server: the plugin evaluates them while rendering and hands
+ * the browser the surviving items only.
  */
 export type PluginCommandMenuConfig = {
   /**
@@ -193,6 +235,12 @@ export type PluginCommandMenuConfig = {
 export interface CommandMenuContextProps {
   children: React.ReactNode
   pluginConfig: PluginCommandMenuConfig
+  /**
+   * Which collections and globals survive `admin.hidden`, computed on the server.
+   * Undefined only if the server half could not run, in which case `admin.hidden` goes
+   * unenforced: it is a matter of tidiness, and real access is still covered by permissions.
+   */
+  visibleEntities?: VisibleEntities
 }
 
 export interface CommandMenuActionLink {

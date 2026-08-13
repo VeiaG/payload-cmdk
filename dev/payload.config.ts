@@ -209,6 +209,61 @@ const buildConfigWithMemoryDB = async () => {
           staticDir: path.resolve(dirname, 'media'),
         },
       },
+      // Two collections the admin is not supposed to offer, for checking that the command
+      // menu leaves them out the way Payload's own nav does.
+      {
+        slug: 'secrets',
+        // Read is denied outright, so the nav drops it and every route 403s.
+        access: {
+          read: () => false,
+        },
+        admin: {
+          group: 'Restricted',
+          useAsTitle: 'name',
+        },
+        fields: [
+          {
+            name: 'name',
+            type: 'text',
+          },
+        ],
+        labels: {
+          plural: {
+            en: 'Secrets',
+            uk: 'Секрети',
+          },
+          singular: {
+            en: 'Secret',
+            uk: 'Секрет',
+          },
+        },
+      },
+      {
+        slug: 'internal-notes',
+        // Readable through the API, kept out of the admin. A different rule from access,
+        // and one a menu built from the config alone will miss.
+        admin: {
+          group: 'Restricted',
+          hidden: true,
+          useAsTitle: 'name',
+        },
+        fields: [
+          {
+            name: 'name',
+            type: 'text',
+          },
+        ],
+        labels: {
+          plural: {
+            en: 'Internal notes',
+            uk: 'Внутрішні нотатки',
+          },
+          singular: {
+            en: 'Internal note',
+            uk: 'Внутрішня нотатка',
+          },
+        },
+      },
     ],
     db: mongooseAdapter({
       ensureIndexes: true,
@@ -389,6 +444,114 @@ const buildConfigWithMemoryDB = async () => {
             label: {
               en: 'Unregistered function (console warn)',
               uk: 'Незареєстрована функція (попередження)',
+            },
+          },
+
+          // ── NEW: access — evaluated on the server, denied items never ship ──
+          {
+            slug: 'access-granted',
+            type: 'item',
+            // Granted to anyone logged in, so this one is visible.
+            access: ({ req }) => Boolean(req.user),
+            action: { type: 'link', href: 'https://payloadcms.com/docs' },
+            icon: 'LockOpen',
+            label: {
+              en: 'Access: granted (visible)',
+              uk: 'Доступ: надано (видно)',
+            },
+          },
+          {
+            slug: 'access-denied',
+            type: 'item',
+            // Denied outright: never present in the menu, and never sent to the browser.
+            access: () => false,
+            action: { type: 'link', href: 'https://payloadcms.com/docs' },
+            icon: 'Lock',
+            label: {
+              en: 'Access: denied (never visible)',
+              uk: 'Доступ: заборонено (ніколи не видно)',
+            },
+          },
+          {
+            slug: 'access-throws',
+            type: 'item',
+            // Throwing denies: an error must not turn into a visible item.
+            access: () => {
+              throw new Error('boom')
+            },
+            action: { type: 'link', href: 'https://payloadcms.com/docs' },
+            icon: 'TriangleAlert',
+            label: {
+              en: 'Access: throws (never visible)',
+              uk: 'Доступ: помилка (ніколи не видно)',
+            },
+          },
+          {
+            slug: 'access-async',
+            type: 'item',
+            // Async is fine: the check may hit the Local API through `req`.
+            access: async ({ req }) => {
+              const { totalDocs } = await req.payload.count({ collection: 'users' })
+              return totalDocs > 0
+            },
+            action: { type: 'link', href: 'https://payloadcms.com/docs' },
+            icon: 'DatabaseZap',
+            label: {
+              en: 'Access: async DB check (visible)',
+              uk: 'Доступ: асинхронна перевірка (видно)',
+            },
+          },
+          {
+            type: 'group',
+            // A denied group takes its items with it, whatever their own access says.
+            access: () => false,
+            items: [
+              {
+                slug: 'hidden-group-item',
+                type: 'item',
+                access: () => true,
+                action: { type: 'link', href: 'https://payloadcms.com/docs' },
+                icon: 'EyeOff',
+                label: {
+                  en: 'Inside a denied group',
+                  uk: 'Усередині забороненої групи',
+                },
+              },
+            ],
+            title: {
+              en: 'Access: denied group (never visible)',
+              uk: 'Доступ: заборонена група (ніколи не видно)',
+            },
+          },
+          {
+            type: 'group',
+            items: [
+              {
+                slug: 'mixed-visible',
+                type: 'item',
+                access: ({ req }) => Boolean(req.user),
+                action: { type: 'link', href: 'https://payloadcms.com/docs' },
+                icon: 'Eye',
+                label: {
+                  en: 'Group item: visible',
+                  uk: 'Пункт групи: видно',
+                },
+              },
+              {
+                slug: 'mixed-hidden',
+                type: 'item',
+                access: () => false,
+                action: { type: 'link', href: 'https://payloadcms.com/docs' },
+                icon: 'EyeOff',
+                label: {
+                  en: 'Group item: hidden',
+                  uk: 'Пункт групи: приховано',
+                },
+              },
+            ],
+            title: {
+              en: 'Access: mixed group',
+              uk: 'Доступ: змішана група',
             },
           },
         ],

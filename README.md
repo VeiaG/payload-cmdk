@@ -16,6 +16,8 @@ A powerful command menu plugin for [Payload CMS](https://payloadcms.com) that en
 
 🎯 **Custom Items** - Add custom actions and menu groups
 
+🔒 **Access Control** - The menu shows only what a user may open, and custom items can guard themselves
+
 🌍 **i18n Support** - Built-in English and Ukrainian translations, easily add your own
 
 🖥️ **Cross-platform** - Optimized shortcuts for both macOS and Windows/Linux
@@ -309,6 +311,7 @@ Add custom menu items and groups to the command menu.
   icon: 'LucideIconName',        // Optional, from lucide.dev/icons
   collectionSlugs: ['posts'],    // Optional — only show on these collection pages
   collectionContext: ['list'],   // Optional — 'list', 'document', or both
+  access: ({ req }) => true,     // Optional — server-side check, see Access Control below
   action: { ... }                // See Action Types below
 }
 ```
@@ -323,11 +326,58 @@ Groups are rendered with a heading and can contain multiple items. Groups with i
   title: 'Group Title',          // Can be a localized object
   collectionSlugs: ['posts'],    // Optional — only show on these collection pages
   collectionContext: ['list'],   // Optional
+  access: ({ req }) => true,     // Optional — server-side check, see Access Control below
   items: [
     // Array of CustomMenuItem
   ]
 }
 ```
+
+---
+
+#### Access Control
+
+The menu never offers a user something they cannot open.
+
+**Collections and globals** are filtered the same way Payload filters its own navigation: a
+collection appears only if the user passes its `read` access and it is not excluded by
+`admin.hidden`. Nothing needs configuring for this.
+
+**Custom items and groups** answer for themselves through an optional `access` function:
+
+```typescript
+customItems: [
+  {
+    type: 'item',
+    slug: 'purge-cache',
+    label: 'Purge Cache',
+    access: ({ req }) => req.user?.role === 'admin',
+    action: { type: 'api', href: '/api/cache/purge', method: 'POST' },
+  },
+]
+```
+
+The function receives the item itself and a `req` carrying the current user, so it can reach
+the Local API:
+
+```typescript
+access: async ({ req }) => {
+  const { totalDocs } = await req.payload.count({
+    collection: 'invoices',
+    where: { owner: { equals: req.user?.id } },
+  })
+  return totalDocs > 0
+}
+```
+
+Three things are worth knowing:
+
+1. **It runs on the server.** A denied item is not hidden with CSS, it is never sent to the
+   browser at all. This is why `access` may be a real function in `payload.config.ts` while
+   `function` actions may not.
+2. **Denial is the safe answer.** If the function throws, the item is dropped.
+3. **A denied group takes its items with it**, whatever their own `access` says. An allowed
+   group still filters each item, and a group left with no items is dropped.
 
 ---
 
@@ -361,7 +411,7 @@ action: {
 
 ##### `function` — Call a client-side handler
 
-Because the plugin config is serialized across the Next.js server→client boundary, functions cannot live directly in `payload.config.ts`. Instead, you reference a handler by a **string key** in the config and register the actual function on the client.
+Because the plugin config is serialized across the Next.js server→client boundary, a handler that runs in the browser cannot live directly in `payload.config.ts`. Instead, you reference a handler by a **string key** in the config and register the actual function on the client. (The `access` functions above are the exception: they never cross that boundary, because they run on the server.)
 
 **Step 1 — reference the key in your config:**
 
