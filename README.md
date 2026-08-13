@@ -371,13 +371,8 @@ access: async ({ req }) => {
 ```
 
 Three things are worth knowing:
-
-1. **It runs on the server.** A denied item is not hidden with CSS, it is never sent to the
-   browser at all. This is why `access` may be a real function in `payload.config.ts` while
-   `function` actions may not.
-2. **Denial is the safe answer.** If the function throws, the item is dropped.
-3. **A denied group takes its items with it**, whatever their own `access` says. An allowed
-   group still filters each item, and a group left with no items is dropped.
+**Denial is the safe answer.** If the function throws, the item is dropped.
+**A denied group takes its items with it**, whatever their own `access` says. An allowed group still filters each item, and a group left with no items is dropped.
 
 ---
 
