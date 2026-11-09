@@ -682,6 +682,34 @@ Completely disable the plugin.
 disabled: process.env.DISABLE_COMMAND_MENU === 'true'
 ```
 
+### Custom menu filter (`registerCommandMenuFilter`)
+
+By default the menu uses cmdk's fuzzy filter. To match differently (for example without diacritics, or only on whole words), register your own filter on the client:
+
+```typescript
+'use client'
+import { registerCommandMenuFilter } from '@veiag/payload-cmdk/client'
+
+const normalize = (text: string) =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+registerCommandMenuFilter((value, search, keywords = []) => {
+  const query = normalize(search)
+  const candidates = [value, ...keywords].map(normalize)
+  if (candidates.some((c) => c === query)) return 1
+  if (candidates.some((c) => c.startsWith(query))) return 0.8
+  if (candidates.some((c) => c.includes(query))) return 0.5
+  return 0
+})
+```
+
+- `value` is the entry's slug.
+- `keywords` is `[group title, label]` for an entry in a group, `[label]` otherwise.
+- Return `0` to hide the entry. A higher score puts the entry, and its group, higher up.
+- Call `registerCommandMenuFilter(undefined)` to go back to the default filter.
+
+Whichever filter is active, groups are ordered by their best-matching entry while you type, so an exact match in a later group shows above a weak match in an earlier one.
+
 ## Custom Translations
 
 The plugin includes built-in translations for:

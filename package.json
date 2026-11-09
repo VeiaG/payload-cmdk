@@ -66,6 +66,7 @@
     "eslint": "^9.23.0",
     "eslint-config-next": "15.4.7",
     "graphql": "^16.8.1",
+    "happy-dom": "20.11.2",
     "mongodb-memory-server": "10.1.4",
     "next": "15.4.8",
     "open": "^10.1.0",

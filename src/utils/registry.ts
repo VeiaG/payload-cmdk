@@ -54,3 +54,34 @@ export const unregisterCommandMenuAction = (key: string): void => {
 export const getCommandMenuAction = (key: string): CommandMenuActionHandler | undefined => {
   return registry.get(key)
 }
+
+/**
+ * A cmdk filter for menu entries: `(value, search, keywords) => score`.
+ *
+ * - `value` is the entry's slug.
+ * - `keywords` is `[group title, label]` for an entry in a group, `[label]` otherwise.
+ * - Return 0 to hide the entry; a higher score sorts it (and its group) first.
+ */
+export type CommandMenuFilter = (value: string, search: string, keywords?: string[]) => number
+
+let menuFilter: CommandMenuFilter | undefined
+
+/**
+ * Replace cmdk's default fuzzy filter for menu entries, e.g. to match without diacritics
+ * or to drop fuzzy noise. Pass `undefined` to restore the default.
+ *
+ * @example
+ * import { registerCommandMenuFilter } from '@veiag/payload-cmdk/client'
+ * registerCommandMenuFilter((value, search, keywords = []) =>
+ *   [value, ...keywords].some((k) => k.toLowerCase().startsWith(search.toLowerCase())) ? 1 : 0,
+ * )
+ */
+export const registerCommandMenuFilter = (filter: CommandMenuFilter | undefined): void => {
+  menuFilter = filter
+}
+
+/**
+ * The registered menu filter, or `undefined` for cmdk's default.
+ * Used internally by the command menu.
+ */
+export const getCommandMenuFilter = (): CommandMenuFilter | undefined => menuFilter

@@ -23,6 +23,7 @@ import {
   useRouteTransition,
   useTranslation,
 } from '@payloadcms/ui'
+import { defaultFilter } from 'cmdk'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatAdminURL } from 'payload/shared'
@@ -40,7 +41,7 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { createDefaultGroups } from '../utils/index'
-import { getCommandMenuAction } from '../utils/registry'
+import { getCommandMenuAction, getCommandMenuFilter } from '../utils/registry'
 import {
   Command,
   CommandEmpty,
@@ -83,6 +84,33 @@ export const useCommandMenu = () => {
 }
 
 const ITEM_SELECTOR = `[cmdk-item=""]`
+
+/** Menu entries use the registered filter (`registerCommandMenuFilter`), else cmdk's fuzzy one. */
+const menuItemsFilter = (value: string, search: string, keywords?: string[]): number =>
+  (getCommandMenuFilter() ?? defaultFilter)(value, search, keywords)
+
+/**
+ * cmdk sorts the items inside a group, but its group sort never takes effect (it looks groups
+ * up by their internal id, while the DOM carries the heading), so groups stay in config order
+ * and a weak match in an early group shows above an exact one further down. Order the groups
+ * here by their best entry; equal scores keep the config order.
+ */
+function rankGroupsBySearch(groups: CommandMenuGroup[], search: string): CommandMenuGroup[] {
+  if (!search.trim()) {
+    return groups
+  }
+  return groups
+    .map((group, index) => ({
+      best: Math.max(
+        0,
+        ...group.items.map((item) => menuItemsFilter(item.slug, search, [group.title, item.label])),
+      ),
+      group,
+      index,
+    }))
+    .sort((a, b) => b.best - a.best || a.index - b.index)
+    .map(({ group }) => group)
+}
 
 function getSelectedElement(containerRef: React.RefObject<HTMLElement | null>) {
   return containerRef.current?.querySelector(`${ITEM_SELECTOR}[aria-selected="true"]`)
@@ -170,6 +198,11 @@ const CommandMenuComponent: React.FC<{
   const visibleItems = useMemo(() => {
     return items.filter((item) => isEntryVisible(item))
   }, [items, isEntryVisible])
+
+  const rankedGroups = useMemo(
+    () => rankGroupsBySearch(visibleGroups, search),
+    [visibleGroups, search],
+  )
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
@@ -419,7 +452,7 @@ const CommandMenuComponent: React.FC<{
         className={`command-modal ${blurBg ? 'command-modal--blur' : ''}`}
         onClick={handleBackdropClick}
       >
-        <Command label="Command Menu" shouldFilter={!shouldDisableFilter}>
+        <Command filter={menuItemsFilter} label="Command Menu" shouldFilter={!shouldDisableFilter}>
           {/* Header for submenu navigation */}
           {currentPage !== 'main' && (
             <div className="command__header">
@@ -440,7 +473,7 @@ const CommandMenuComponent: React.FC<{
 
             {/* Main page view */}
             {currentPage === 'main' &&
-              visibleGroups.map((group, index) => {
+              rankedGroups.map((group, index) => {
                 if (group.items.length === 0) {
                   return null
                 }
@@ -454,7 +487,7 @@ const CommandMenuComponent: React.FC<{
                 }
 
                 const isRenderSeparator = !(
-                  index === visibleGroups.length - 1 && visibleItems.length === 0
+                  index === rankedGroups.length - 1 && visibleItems.length === 0
                 )
                 return (
                   <Fragment key={group.title}>
