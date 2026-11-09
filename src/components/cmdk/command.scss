@@ -270,6 +270,21 @@
     color: var(--theme-elevation-800);
   }
 
+  // documentSearch.toggle checkbox, right-aligned in the footer
+  .command__toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--base) * 0.25);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+
   // Command Shortcut
   .command__shortcut {
     margin-left: auto;

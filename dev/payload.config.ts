@@ -561,6 +561,7 @@ const buildConfigWithMemoryDB = async () => {
         documentSearch: {
           endpoint: '/api/cmdk-search',
           position: 'after',
+          toggle: true,
         },
         icons: {
           collections: {

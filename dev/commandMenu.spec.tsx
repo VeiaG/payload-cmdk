@@ -26,6 +26,13 @@ const menuConfig = vi.hoisted(() => ({
   routes: { admin: '/admin' },
 }))
 
+/** The stored Payload preferences of the current user. */
+const prefs = vi.hoisted(() => ({
+  reject: false,
+  set: (() => Promise.resolve()) as (key: string, value: unknown) => Promise<void>,
+  stored: undefined as unknown,
+}))
+
 vi.mock('@payloadcms/ui', () => ({
   Modal: ({ children }: { children?: React.ReactNode }) => <div data-modal>{children}</div>,
   useAuth: () => ({
@@ -40,6 +47,11 @@ vi.mock('@payloadcms/ui', () => ({
     isModalOpen: () => true,
     openModal: vi.fn(),
     toggleModal: vi.fn(),
+  }),
+  usePreferences: () => ({
+    getPreference: () =>
+      prefs.reject ? Promise.reject(new Error('offline')) : Promise.resolve(prefs.stored),
+    setPreference: (key: string, value: unknown) => prefs.set(key, value),
   }),
   useRouteTransition: () => ({ startRouteTransition: (fn: () => void) => fn() }),
   useTranslation: () => ({ i18n: { language: 'en' }, t: (key: string) => key }),
@@ -96,7 +108,10 @@ async function flush() {
 
 beforeEach(async () => {
   searchBody = { groups: [], query: '' }
-  fetchMock.mockClear()
+  fetchMock.mockReset()
+  prefs.reject = false
+  prefs.stored = undefined
+  prefs.set = vi.fn(() => Promise.resolve())
   vi.stubGlobal('fetch', fetchMock)
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -189,6 +204,14 @@ describe('documentSearch', () => {
     await vi.waitFor(() => expect(selectedOption()).toBe('Max Müller'))
   })
 
+  test('does not say "no results" while it shows results', async () => {
+    await renderMenu({ documentSearch })
+    searchBody = results('nguyen', doc('12', 'Linh Nguyen'))
+    await typeSearch('nguyen')
+    await vi.waitFor(() => expect(shownOptions()).toEqual(['Linh Nguyen']))
+    expect(container.querySelector('[cmdk-empty]')).toBeNull()
+  })
+
   test('links to all results when the endpoint sends moreHref', async () => {
     await renderMenu({ documentSearch })
     searchBody = { ...results('kowalski', doc('5', 'Jan Kowalski')), moreHref: '/admin/search' }
@@ -205,6 +228,32 @@ describe('documentSearch', () => {
     expect(searchCalls()).toBe(0)
   })
 
+  test('never shows the late answer of a query the user has already typed past', async () => {
+    const pending = new Map<string, (body: DocumentSearchResponse) => void>()
+    fetchMock.mockImplementation((url: string) => {
+      const q = new URL(url, 'http://localhost').searchParams.get('q')
+      if (!q) {
+        return Promise.resolve(new Response(JSON.stringify({ groups: [], query: '' })))
+      }
+      // Ignores the abort signal on purpose: the menu must not rely on fetch rejecting.
+      return new Promise<Response>((resolve) => {
+        pending.set(q, (body) => resolve(new Response(JSON.stringify(body))))
+      })
+    })
+    await renderMenu({ documentSearch })
+    await typeSearch('lange')
+    await vi.waitFor(() => expect(pending.has('lange')).toBe(true))
+    await typeSearch('langer')
+    await vi.waitFor(() => expect(pending.has('langer')).toBe(true))
+
+    pending.get('lange')!(results('lange', doc('10', 'Lange Stale')))
+    await flush()
+    expect(shownOptions()).not.toContain('Lange Stale')
+
+    pending.get('langer')!(results('langer', doc('11', 'Langer Fresh')))
+    await vi.waitFor(() => expect(shownOptions()).toEqual(['Langer Fresh']))
+  })
+
   test('opens the selected result in a new tab on Ctrl+Enter', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     await renderMenu({ documentSearch })
@@ -218,5 +267,95 @@ describe('documentSearch', () => {
     })
     expect(open).toHaveBeenCalledWith('/admin/collections/posts/6', '_blank', 'noopener')
     open.mockRestore()
+  })
+})
+
+describe('documentSearch.toggle', () => {
+  const withToggle = { documentSearch: { ...documentSearch, toggle: true } }
+  const checkbox = () => container.querySelector<HTMLInputElement>('.command__toggle input')
+  const click = (element: HTMLElement) => act(() => element.click())
+
+  test('is ticked by default and hides results when unticked, saving the choice', async () => {
+    await renderMenu(withToggle)
+    expect(checkbox()?.checked).toBe(true)
+    expect(container.querySelector('.command__toggle')?.textContent).toContain(
+      'cmdkPlugin:showDocuments',
+    )
+    searchBody = results('schmidt', doc('7', 'Ina Schmidt'))
+    await typeSearch('schmidt')
+    await vi.waitFor(() => expect(shownOptions()).toEqual(['Ina Schmidt']))
+
+    click(checkbox()!)
+    expect(shownOptions()).toEqual([])
+    expect(checkbox()?.checked).toBe(false)
+    // An object, not a bare boolean: Payload's preference endpoint stores `data.value || data`,
+    // so a bare `false` would be saved as `{ value: false }`.
+    expect(prefs.set).toHaveBeenCalledWith('payload-cmdk-document-search', { enabled: false })
+  })
+
+  test('fetches nothing while unticked from the saved preference', async () => {
+    prefs.stored = { enabled: false }
+    await renderMenu(withToggle)
+    expect(checkbox()?.checked).toBe(false)
+    await typeSearch('schulz')
+    await flush()
+    expect(searchCalls()).toBe(0)
+  })
+
+  test('drops a late answer that arrives after unticking', async () => {
+    let release = () => {}
+    fetchMock.mockImplementation((url: string) => {
+      const q = new URL(url, 'http://localhost').searchParams.get('q')
+      if (!q) {
+        return Promise.resolve(new Response(JSON.stringify({ groups: [], query: '' })))
+      }
+      // Ignores the abort signal on purpose: the menu must not rely on fetch rejecting.
+      return new Promise<Response>((resolve) => {
+        release = () => resolve(new Response(JSON.stringify(searchBody)))
+      })
+    })
+    await renderMenu(withToggle)
+    searchBody = results('weber', doc('8', 'Kai Weber'))
+    await typeSearch('weber')
+    await vi.waitFor(() => expect(searchCalls()).toBe(1))
+
+    click(checkbox()!)
+    release()
+    await flush()
+    expect(shownOptions()).toEqual([])
+  })
+
+  test('keeps focus in the search input when the checkbox is clicked', async () => {
+    await renderMenu(withToggle)
+    const input = container.querySelector<HTMLInputElement>('input[cmdk-input]')!
+    input.focus()
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    container.querySelector('.command__toggle')!.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+
+    // A real click still focuses the checkbox; typing must go on in the search input.
+    checkbox()!.focus()
+    click(checkbox()!)
+    expect(document.activeElement).toBe(input)
+  })
+
+  test('ignores a stored preference of another shape', async () => {
+    prefs.stored = { value: false }
+    await renderMenu(withToggle)
+    expect(checkbox()?.checked).toBe(true)
+  })
+
+  test('still shows results when loading the preference fails', async () => {
+    prefs.reject = true
+    await renderMenu(withToggle)
+    expect(checkbox()?.checked).toBe(true)
+    searchBody = results('koch', doc('9', 'Udo Koch'))
+    await typeSearch('koch')
+    await vi.waitFor(() => expect(shownOptions()).toEqual(['Udo Koch']))
+  })
+
+  test('has no checkbox without toggle', async () => {
+    await renderMenu({ documentSearch })
+    expect(container.querySelector('.command__toggle')).toBeNull()
   })
 })

@@ -275,6 +275,7 @@ documentSearch: {
   minLength: 2,                 // don't search shorter queries (default: 2)
   debounceMs: 60,               // wait after the last keystroke (default: 60)
   position: 'after',            // 'before' (default) or 'after' the menu entries
+  toggle: true,                 // footer checkbox to turn the results off (default: false)
 }
 ```
 
@@ -345,6 +346,8 @@ export const cmdkSearch: Endpoint = {
 Register it in `endpoints` of your Payload config. Results are cached per query for 30 seconds in the browser, matching words are highlighted, and `Cmd/Ctrl+Enter` opens a result in a new tab.
 
 With `position: 'before'` the results show above the menu entries. With `position: 'after'` the menu entries (collections, globals, custom items) keep the top places, which suits users who mostly navigate with the menu; a query that matches no menu entry still highlights the first result, so Enter opens it.
+
+With `toggle: true` the footer gets a "Show documents" checkbox (translation key `showDocuments`). Unticked, the menu neither fetches nor shows results, so it only searches the menu. The choice is saved per user as the Payload preference `payload-cmdk-document-search` (`{ enabled: boolean }`), and results are on until the user unticks it.
 
 ### `icons`
 
@@ -867,6 +870,7 @@ All translation keys are under the `cmdkPlugin` namespace:
 | `open` | Footer hint for opening documents | "to open" |
 | `openInNewTab` | Footer hint for `documentSearch` results | "to open in a new tab" |
 | `showAllResults` | `documentSearch` link to all results | "Show all results for “{{query}}”" |
+| `showDocuments` | `documentSearch.toggle` checkbox label | "Show documents" |
 
 
 ## Keyboard Shortcuts

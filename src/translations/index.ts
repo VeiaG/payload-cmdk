@@ -14,6 +14,7 @@ export const commandPluginTranslations = {
       searchInCollection: 'to search in collection',
       searchShort: 'Search',
       showAllResults: 'Show all results for “{{query}}”',
+      showDocuments: 'Show documents',
     },
   },
   uk: {
@@ -28,6 +29,7 @@ export const commandPluginTranslations = {
       searchInCollection: 'щоб шукати в колекції',
       searchShort: 'Пошук',
       showAllResults: 'Усі результати для «{{query}}»',
+      showDocuments: 'Показувати документи',
     },
   },
 }

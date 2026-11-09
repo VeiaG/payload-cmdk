@@ -21,6 +21,7 @@ import {
   useAuth,
   useConfig,
   useModal,
+  usePreferences,
   useRouteTransition,
   useTranslation,
 } from '@payloadcms/ui'
@@ -93,6 +94,13 @@ const ITEM_SELECTOR = `[cmdk-item=""]`
 const DOC_VALUE_PREFIX = 'qs:'
 const DOC_CACHE_TTL_MS = 30_000
 const DOC_CACHE_MAX = 100
+/**
+ * Payload preference that remembers the `documentSearch.toggle` checkbox per user, stored as
+ * `{ enabled: boolean }`. Not a bare boolean: Payload's preference endpoint stores
+ * `data.value || data`, so a bare `false` would come back as `{ value: false }`.
+ */
+const DOC_TOGGLE_PREFERENCE = 'payload-cmdk-document-search'
+type DocTogglePreference = { enabled: boolean }
 const docCache = new Map<string, { expiresAt: number; value: DocumentSearchResponse }>()
 
 function readDocCache(key: string): DocumentSearchResponse | undefined {
@@ -222,6 +230,7 @@ const CommandMenuComponent: React.FC<{
   const [isMac, setIsMac] = useState(false)
 
   const commandListRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const { closeMenu, currentPage, groups, isOpen, items, setPage } = useCommandMenu()
   const router = useRouter()
@@ -392,10 +401,38 @@ const CommandMenuComponent: React.FC<{
   const docSearchMinLength = pluginConfig?.documentSearch?.minLength ?? 2
   const docSearchDebounceMs = pluginConfig?.documentSearch?.debounceMs ?? 60
   const docSearchPosition = pluginConfig?.documentSearch?.position ?? 'before'
+  const docSearchToggle = pluginConfig?.documentSearch?.toggle === true
+
+  // `documentSearch.toggle`: results are on until the user unticks the footer checkbox.
+  const { getPreference, setPreference } = usePreferences()
+  const [showDocuments, setShowDocuments] = useState(true)
+  useEffect(() => {
+    if (!docSearchToggle) {
+      return
+    }
+    let cancelled = false
+    getPreference<DocTogglePreference | null>(DOC_TOGGLE_PREFERENCE)
+      .then((stored) => {
+        if (!cancelled && typeof stored?.enabled === 'boolean') {
+          setShowDocuments(stored.enabled)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [docSearchToggle, getPreference])
+  const toggleShowDocuments = (next: boolean) => {
+    setShowDocuments(next)
+    setPreference<DocTogglePreference>(DOC_TOGGLE_PREFERENCE, { enabled: next }).catch(() => {})
+    // Clicking the checkbox focuses it; keep typing in the search input instead.
+    inputRef.current?.focus()
+  }
+  const isDocSearchOn = Boolean(docSearchEndpoint) && (!docSearchToggle || showDocuments)
   const docQuery = search.replace(/\s+/g, ' ').trim()
 
   useEffect(() => {
-    if (currentPage !== 'main' || !docSearchEndpoint || docQuery.length < docSearchMinLength) {
+    if (currentPage !== 'main' || !isDocSearchOn || docQuery.length < docSearchMinLength) {
       setDocResults(null)
       setIsLoadingDocs(false)
       return
@@ -426,9 +463,12 @@ const CommandMenuComponent: React.FC<{
         }
         const data = (await response.json()) as DocumentSearchResponse
         writeDocCache(cacheKey, data)
-        setDocResults(data)
+        // A search that was cancelled meanwhile (new query, results turned off) must not show.
+        if (!controller.signal.aborted) {
+          setDocResults(data)
+        }
       } catch (error) {
-        if ((error as Error)?.name === 'AbortError') {
+        if ((error as Error)?.name === 'AbortError' || controller.signal.aborted) {
           return
         }
         setDocResults(null)
@@ -442,16 +482,23 @@ const CommandMenuComponent: React.FC<{
       clearTimeout(timeoutId)
       controller.abort()
     }
-  }, [currentPage, docQuery, docSearchEndpoint, docSearchMinLength, docSearchDebounceMs])
+  }, [
+    currentPage,
+    docQuery,
+    docSearchEndpoint,
+    docSearchMinLength,
+    docSearchDebounceMs,
+    isDocSearchOn,
+  ])
 
   // Opening the menu warms up the endpoint (session, connection), so the first real
   // keystroke does not pay for it.
   useEffect(() => {
-    if (!isOpen || !docSearchEndpoint) {
+    if (!isOpen || !docSearchEndpoint || !isDocSearchOn) {
       return
     }
     fetch(`${docSearchEndpoint}?q=`, { credentials: 'include' }).catch(() => {})
-  }, [isOpen, docSearchEndpoint])
+  }, [isOpen, docSearchEndpoint, isDocSearchOn])
 
   const handleBack = useCallback(() => {
     setPage('main')
@@ -611,7 +658,8 @@ const CommandMenuComponent: React.FC<{
           ? [{ key: 'Enter', label: t('cmdkPlugin:navigate') }]
           : [{ key: 'Enter', label: t('cmdkPlugin:open') }]
 
-  const hasDocResults = currentPage === 'main' && (docResults?.groups?.length ?? 0) > 0
+  const hasDocResults =
+    currentPage === 'main' && isDocSearchOn && (docResults?.groups?.length ?? 0) > 0
   if (hasDocResults) {
     footerShortcuts.push({ key: 'meta + Enter', label: t('cmdkPlugin:openInNewTab') })
   }
@@ -720,16 +768,23 @@ const CommandMenuComponent: React.FC<{
             </div>
           )}
 
-          <CommandInput onValueChange={setSearch} placeholder={placeholder} value={search} />
+          <CommandInput
+            onValueChange={setSearch}
+            placeholder={placeholder}
+            ref={inputRef}
+            value={search}
+          />
           <CommandList ref={commandListRef}>
-            <CommandEmpty>
-              {isLoadingSubmenu || isLoadingDocs
-                ? t('cmdkPlugin:loading')
-                : t('cmdkPlugin:noResults')}
-            </CommandEmpty>
+            {/* cmdk does not count forceMount items, so it would call a list of results empty */}
+            {!hasDocResults && (
+              <CommandEmpty>
+                {isLoadingSubmenu || isLoadingDocs
+                  ? t('cmdkPlugin:loading')
+                  : t('cmdkPlugin:noResults')}
+              </CommandEmpty>
+            )}
 
             {docSearchPosition === 'before' && docResultsBlock}
-            {docSearchPosition === 'before' && hasDocResults && <CommandSeparator alwaysRender />}
 
             {/* Main page view */}
             {currentPage === 'main' &&
@@ -812,7 +867,6 @@ const CommandMenuComponent: React.FC<{
                 )
               })}
 
-            {docSearchPosition === 'after' && hasDocResults && <CommandSeparator alwaysRender />}
             {docSearchPosition === 'after' && docResultsBlock}
 
             {/* Submenu page view */}
@@ -850,6 +904,20 @@ const CommandMenuComponent: React.FC<{
                   <kbd>{formatShortcutKey(shortcut.key)}</kbd> {shortcut.label}
                 </span>
               ))}
+              {currentPage === 'main' && docSearchEndpoint && docSearchToggle && (
+                // preventDefault on mousedown keeps the focus (and typing) in the search input.
+                // The label wraps the checkbox and its text, so it is still a proper label.
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+                <label className="command__toggle" onMouseDown={(e) => e.preventDefault()}>
+                  {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- wrapped by the label */}
+                  <input
+                    checked={showDocuments}
+                    onChange={(e) => toggleShowDocuments(e.target.checked)}
+                    type="checkbox"
+                  />
+                  {t('cmdkPlugin:showDocuments')}
+                </label>
+              )}
             </div>
           )}
         </Command>
