@@ -4,6 +4,14 @@ import type { PluginCommandMenuConfig } from './types'
 
 import { commandPluginTranslations } from './translations'
 
+export type {
+  DocumentSearchConfig,
+  DocumentSearchResponse,
+  DocumentSearchResultGroup,
+  DocumentSearchResultItem,
+  PluginCommandMenuConfig,
+} from './types'
+
 export const payloadCmdk =
   (pluginOptions: PluginCommandMenuConfig = {}) =>
   (config: Config): Config => {

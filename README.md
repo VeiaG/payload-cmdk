@@ -12,6 +12,8 @@ A powerful command menu plugin for [Payload CMS](https://payloadcms.com) that en
 
 🔍 **Collection Submenu** - Search within collection documents by their title field
 
+📄 **Live Document Search** - Show documents from your own search endpoint while typing, above or below the menu
+
 🎨 **Custom Icons** - Use any [Lucide icon](https://lucide.dev/icons) for collections and globals
 
 🎯 **Custom Items** - Add custom actions and menu groups
@@ -259,6 +261,90 @@ The submenu searches documents by their `useAsTitle` field (or `id` if not speci
   }
 }
 ```
+
+### `documentSearch`
+
+Show live documents from your own search endpoint on the main page while the user types, e.g. people by name, email or phone number across several collections. Off unless configured.
+
+- **Type:** `DocumentSearchConfig`
+- **Default:** `undefined`
+
+```typescript
+documentSearch: {
+  endpoint: '/api/cmdk-search', // required
+  minLength: 2,                 // don't search shorter queries (default: 2)
+  debounceMs: 60,               // wait after the last keystroke (default: 60)
+  position: 'after',            // 'before' (default) or 'after' the menu entries
+}
+```
+
+The menu calls `GET <endpoint>?q=<query>` with the user's cookies and expects a `DocumentSearchResponse`:
+
+```typescript
+type DocumentSearchResponse = {
+  query: string
+  groups: {
+    slug: string
+    title: string    // group heading
+    icon: string     // Lucide icon name
+    items: {
+      id: string           // unique across all groups, e.g. 'posts:123'
+      label: string
+      href: string         // where Enter takes the user
+      description?: string // second line, e.g. an email address
+      badge?: string       // small tag on the right, e.g. 'Draft'
+    }[]
+  }[]
+  moreHref?: string  // optional "Show all results" link, e.g. to a search page
+}
+```
+
+It also calls the endpoint once with an empty `q` when the menu opens, to warm it up; answer that with no groups. The types are exported from `@veiag/payload-cmdk`.
+
+A minimal endpoint that searches posts by title, with the user's own access:
+
+```typescript
+import type { Endpoint } from 'payload'
+import type { DocumentSearchResponse } from '@veiag/payload-cmdk'
+
+export const cmdkSearch: Endpoint = {
+  path: '/cmdk-search',
+  method: 'get',
+  handler: async (req) => {
+    const query = typeof req.query?.q === 'string' ? req.query.q.trim() : ''
+    if (!req.user || query.length < 2) {
+      return Response.json({ query, groups: [] } satisfies DocumentSearchResponse)
+    }
+    const { docs } = await req.payload.find({
+      collection: 'posts',
+      where: { title: { like: query } },
+      limit: 5,
+      depth: 0,
+      overrideAccess: false,
+      req,
+    })
+    return Response.json({
+      query,
+      groups: docs.length
+        ? [{
+            slug: 'posts',
+            title: 'Posts',
+            icon: 'Newspaper',
+            items: docs.map((doc) => ({
+              id: `posts:${doc.id}`,
+              label: doc.title,
+              href: `/admin/collections/posts/${doc.id}`,
+            })),
+          }]
+        : [],
+    } satisfies DocumentSearchResponse)
+  },
+}
+```
+
+Register it in `endpoints` of your Payload config. Results are cached per query for 30 seconds in the browser, matching words are highlighted, and `Cmd/Ctrl+Enter` opens a result in a new tab.
+
+With `position: 'before'` the results show above the menu entries. With `position: 'after'` the menu entries (collections, globals, custom items) keep the top places, which suits users who mostly navigate with the menu; a query that matches no menu entry still highlights the first result, so Enter opens it.
 
 ### `icons`
 
@@ -779,6 +865,8 @@ All translation keys are under the `cmdkPlugin` namespace:
 | `navigate` | Footer hint for navigation | "to navigate" |
 | `searchInCollection` | Footer hint for collection search | "to search in collection" |
 | `open` | Footer hint for opening documents | "to open" |
+| `openInNewTab` | Footer hint for `documentSearch` results | "to open in a new tab" |
+| `showAllResults` | `documentSearch` link to all results | "Show all results for “{{query}}”" |
 
 
 ## Keyboard Shortcuts
@@ -792,6 +880,7 @@ All translation keys are under the `cmdkPlugin` namespace:
 | `↑` `↓` | Navigate items |
 | `Enter` | Select item or navigate to collection |
 | `Shift+Enter` | Search within collection (default) |
+| `⌘Enter` / `Ctrl+Enter` | Open the selected `documentSearch` result in a new tab |
 
 ### In Submenu
 

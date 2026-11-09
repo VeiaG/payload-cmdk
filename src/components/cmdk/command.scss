@@ -108,7 +108,7 @@
 
   // Command List
   .command__list {
-    max-height: 300px;
+    max-height: min(60vh, 520px);
     overflow-x: hidden;
     overflow-y: auto;
     scroll-padding: calc(var(--base) * 0.25);
@@ -215,6 +215,59 @@
     &:hover:not([data-disabled='true']) {
       background: var(--theme-elevation-100);
     }
+  }
+
+  // Document search results
+  .command__item--document {
+    align-items: flex-start;
+
+    svg {
+      margin-top: 2px;
+    }
+  }
+
+  .command__item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .command__item-label,
+  .command__item-description {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .command__item-description {
+    font-size: 0.846rem; // ~11px
+    color: var(--theme-elevation-500);
+  }
+
+  .command__item[data-selected='true'] .command__item-description {
+    color: var(--theme-success-700);
+  }
+
+  .command__match {
+    background: none;
+    color: inherit;
+    font-weight: 600;
+  }
+
+  .command__item-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    align-self: center;
+    padding: 1px calc(var(--base) * 0.3);
+    font-size: 0.769rem; // ~10px
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border-radius: var(--style-radius-s);
+    background: var(--theme-elevation-100);
+    color: var(--theme-elevation-800);
   }
 
   // Command Shortcut
