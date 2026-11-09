@@ -108,7 +108,7 @@
 
   // Command List
   .command__list {
-    max-height: min(60vh, 520px);
+    max-height: 300px;
     overflow-x: hidden;
     overflow-y: auto;
     scroll-padding: calc(var(--base) * 0.25);
@@ -217,7 +217,11 @@
     }
   }
 
-  // Document search results
+  // Document search results: they make the list longer, so it may grow taller
+  .command__list--documents {
+    max-height: min(60vh, 520px);
+  }
+
   .command__item--document {
     align-items: flex-start;
 

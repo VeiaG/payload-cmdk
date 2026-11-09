@@ -26,12 +26,24 @@ const menuConfig = vi.hoisted(() => ({
   routes: { admin: '/admin' },
 }))
 
+/** The logged-in user; `null` on the login page. */
+const auth = vi.hoisted(() => ({ user: { id: 'u1' } as { id: string } | null }))
+
 /** The stored Payload preferences of the current user. */
-const prefs = vi.hoisted(() => ({
-  reject: false,
-  set: (() => Promise.resolve()) as (key: string, value: unknown) => Promise<void>,
-  stored: undefined as unknown,
-}))
+const prefs = vi.hoisted(() => {
+  const state = {
+    // Stable like Payload's, which only changes with the language.
+    get: (): Promise<unknown> =>
+      state.reject
+        ? Promise.reject(new Error('offline'))
+        : // Like Payload: without a user the preference request is refused and reads as null.
+          Promise.resolve(auth.user ? state.stored : null),
+    reject: false,
+    set: (() => Promise.resolve()) as (key: string, value: unknown) => Promise<void>,
+    stored: undefined as unknown,
+  }
+  return state
+})
 
 vi.mock('@payloadcms/ui', () => ({
   Modal: ({ children }: { children?: React.ReactNode }) => <div data-modal>{children}</div>,
@@ -40,6 +52,7 @@ vi.mock('@payloadcms/ui', () => ({
       collections: { media: { read: true }, newsletters: { read: true } },
       globals: {},
     },
+    user: auth.user,
   }),
   useConfig: () => ({ config: menuConfig }),
   useModal: () => ({
@@ -49,8 +62,7 @@ vi.mock('@payloadcms/ui', () => ({
     toggleModal: vi.fn(),
   }),
   usePreferences: () => ({
-    getPreference: () =>
-      prefs.reject ? Promise.reject(new Error('offline')) : Promise.resolve(prefs.stored),
+    getPreference: prefs.get,
     setPreference: (key: string, value: unknown) => prefs.set(key, value),
   }),
   useRouteTransition: () => ({ startRouteTransition: (fn: () => void) => fn() }),
@@ -84,11 +96,21 @@ const searchCalls = () =>
 let container: HTMLDivElement
 let root: null | Root = null
 
-async function renderMenu(pluginConfig: PluginCommandMenuConfig = {}) {
-  if (root) {
+/**
+ * Render the menu; `keepMounted` re-renders the mounted one (as a context change would),
+ * otherwise it starts fresh.
+ */
+async function renderMenu(
+  pluginConfig: PluginCommandMenuConfig = {},
+  { keepMounted = false }: { keepMounted?: boolean } = {},
+) {
+  if (root && !keepMounted) {
     act(() => root?.unmount())
+    root = null
   }
-  root = createRoot(container)
+  root ??= createRoot(container)
+  // A new object each time, so the memoized menu re-renders and re-reads the mocked hooks.
+  pluginConfig = { ...pluginConfig }
   act(() => {
     root?.render(
       <CommandMenuProvider pluginConfig={pluginConfig}>
@@ -109,6 +131,7 @@ async function flush() {
 beforeEach(async () => {
   searchBody = { groups: [], query: '' }
   fetchMock.mockReset()
+  auth.user = { id: 'u1' }
   prefs.reject = false
   prefs.stored = undefined
   prefs.set = vi.fn(() => Promise.resolve())
@@ -219,6 +242,58 @@ describe('documentSearch', () => {
     await vi.waitFor(() =>
       expect(shownOptions()).toEqual(['Jan Kowalski', 'cmdkPlugin:showAllResults']),
     )
+  })
+
+  test('keeps the list height of the plain menu unless documentSearch is configured', async () => {
+    expect(container.querySelector('.command__list--documents')).toBeNull()
+    await renderMenu({ documentSearch })
+    expect(container.querySelector('.command__list--documents')).not.toBeNull()
+  })
+
+  test("keeps ungrouped custom items above the results with position 'after'", async () => {
+    await renderMenu({
+      customItems: [
+        {
+          slug: 'view-site',
+          type: 'item',
+          action: { type: 'link', href: 'https://example.com' },
+          label: 'View Site',
+        },
+      ],
+      documentSearch: { ...documentSearch, position: 'after' },
+    })
+    searchBody = results('view', doc('13', 'Viewpoint Post'))
+    await typeSearch('view')
+    await vi.waitFor(() => expect(shownOptions()).toContain('Viewpoint Post'))
+    expect(shownOptions()).toEqual(['View Site', 'Viewpoint Post'])
+    expect(selectedOption()).toBe('View Site')
+  })
+
+  test('survives an endpoint that answers something else than DocumentSearchResponse', async () => {
+    await renderMenu({ documentSearch })
+    searchBody = { error: 'boom' } as unknown as DocumentSearchResponse
+    await typeSearch('broken')
+    await flush()
+    // The next keystroke narrows what "broken" cached; that must not throw either.
+    await typeSearch('brokenx')
+    await flush()
+    expect(shownOptions()).toEqual([])
+    expect(container.querySelector('input[cmdk-input]')).not.toBeNull()
+  })
+
+  test('does not show results cached for another user', async () => {
+    await renderMenu({ documentSearch })
+    searchBody = results('quinn', doc('14', 'Quinn Private'))
+    await typeSearch('quinn')
+    await vi.waitFor(() => expect(shownOptions()).toEqual(['Quinn Private']))
+
+    // Log out and in as someone else in the same tab: the module-level cache outlives it.
+    auth.user = { id: 'u2' }
+    searchBody = results('quinn')
+    await renderMenu({ documentSearch })
+    await typeSearch('quinn')
+    await flush()
+    expect(shownOptions()).toEqual([])
   })
 
   test('does not search below minLength', async () => {
@@ -337,6 +412,17 @@ describe('documentSearch.toggle', () => {
     checkbox()!.focus()
     click(checkbox()!)
     expect(document.activeElement).toBe(input)
+  })
+
+  test('reads the saved choice once a user has logged in', async () => {
+    auth.user = null
+    prefs.stored = { enabled: false }
+    await renderMenu(withToggle)
+    expect(checkbox()?.checked).toBe(true)
+
+    auth.user = { id: 'u1' }
+    await renderMenu(withToggle, { keepMounted: true })
+    await vi.waitFor(() => expect(checkbox()?.checked).toBe(false))
   })
 
   test('ignores a stored preference of another shape', async () => {

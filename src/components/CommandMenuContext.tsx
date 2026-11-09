@@ -102,6 +102,15 @@ const DOC_CACHE_MAX = 100
 const DOC_TOGGLE_PREFERENCE = 'payload-cmdk-document-search'
 type DocTogglePreference = { enabled: boolean }
 const docCache = new Map<string, { expiresAt: number; value: DocumentSearchResponse }>()
+/** Whose answers `docCache` holds: they depend on the user's access, so a new user starts empty. */
+let docCacheUser: string | undefined
+
+function claimDocCacheFor(user: string) {
+  if (docCacheUser !== user) {
+    docCache.clear()
+    docCacheUser = user
+  }
+}
 
 function readDocCache(key: string): DocumentSearchResponse | undefined {
   const entry = docCache.get(key)
@@ -203,6 +212,26 @@ function rankGroupsBySearch(groups: CommandMenuGroup[], search: string): Command
     .map(({ group }) => group)
 }
 
+function StrayItemsWrapper({ children, wrap }: { children: React.ReactNode; wrap: boolean }) {
+  return wrap ? <CommandGroup>{children}</CommandGroup> : <>{children}</>
+}
+
+/**
+ * Accept only what `DocumentSearchResponse` promises, so an endpoint that answers an error
+ * object with status 200 shows no results instead of crashing the admin.
+ */
+function toDocumentSearchResponse(data: unknown, query: string): DocumentSearchResponse {
+  const response = (data ?? {}) as Partial<DocumentSearchResponse>
+  const groups = Array.isArray(response.groups)
+    ? response.groups.filter((group) => Array.isArray(group?.items))
+    : []
+  return {
+    groups,
+    moreHref: typeof response.moreHref === 'string' ? response.moreHref : undefined,
+    query: typeof response.query === 'string' ? response.query : query,
+  }
+}
+
 /** A document result as a menu item, so selecting it goes through the normal link action. */
 function docLinkItem(id: string, href: string): CommandMenuItem {
   return {
@@ -238,6 +267,8 @@ const CommandMenuComponent: React.FC<{
   const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
   const { config } = useConfig()
+  const { user } = useAuth()
+  const userKey = user?.id != null ? String(user.id) : ''
 
   // Detect which collection the user is currently viewing (if any) and whether
   // they are on the list page or a specific document/create page.
@@ -407,7 +438,9 @@ const CommandMenuComponent: React.FC<{
   const { getPreference, setPreference } = usePreferences()
   const [showDocuments, setShowDocuments] = useState(true)
   useEffect(() => {
-    if (!docSearchToggle) {
+    // Each user has their own choice; without one (login page) there is none to read.
+    setShowDocuments(true)
+    if (!docSearchToggle || !userKey) {
       return
     }
     let cancelled = false
@@ -421,7 +454,7 @@ const CommandMenuComponent: React.FC<{
     return () => {
       cancelled = true
     }
-  }, [docSearchToggle, getPreference])
+  }, [docSearchToggle, getPreference, userKey])
   const toggleShowDocuments = (next: boolean) => {
     setShowDocuments(next)
     setPreference<DocTogglePreference>(DOC_TOGGLE_PREFERENCE, { enabled: next }).catch(() => {})
@@ -437,6 +470,7 @@ const CommandMenuComponent: React.FC<{
       setIsLoadingDocs(false)
       return
     }
+    claimDocCacheFor(userKey)
     const cacheKey = docQuery.toLowerCase()
     const cached = readDocCache(cacheKey)
     if (cached) {
@@ -461,7 +495,7 @@ const CommandMenuComponent: React.FC<{
         if (!response.ok) {
           throw new Error(`[payload-cmdk] document search failed: ${response.status}`)
         }
-        const data = (await response.json()) as DocumentSearchResponse
+        const data = toDocumentSearchResponse(await response.json(), docQuery)
         writeDocCache(cacheKey, data)
         // A search that was cancelled meanwhile (new query, results turned off) must not show.
         if (!controller.signal.aborted) {
@@ -489,6 +523,7 @@ const CommandMenuComponent: React.FC<{
     docSearchMinLength,
     docSearchDebounceMs,
     isDocSearchOn,
+    userKey,
   ])
 
   // Opening the menu warms up the endpoint (session, connection), so the first real
@@ -774,7 +809,10 @@ const CommandMenuComponent: React.FC<{
             ref={inputRef}
             value={search}
           />
-          <CommandList ref={commandListRef}>
+          <CommandList
+            className={docSearchEndpoint ? 'command__list--documents' : undefined}
+            ref={commandListRef}
+          >
             {/* cmdk does not count forceMount items, so it would call a list of results empty */}
             {!hasDocResults && (
               <CommandEmpty>
@@ -841,31 +879,36 @@ const CommandMenuComponent: React.FC<{
               })}
 
             {/* Stray items on main page */}
-            {currentPage === 'main' &&
-              visibleItems?.map((item) => {
-                const isDynamicIcon = typeof item.icon === 'string'
-                const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
-                return (
-                  <CommandItem
-                    data-action-type={item.action.type}
-                    data-item-type={item.type}
-                    key={item.slug}
-                    keywords={[item.label]}
-                    onSelect={() => handleSelect(item)}
-                    value={item.slug}
-                  >
-                    {isDynamicIcon ? (
-                      <LucideIconDynamic
-                        className="command__item-icon"
-                        name={item.icon as IconName}
-                      />
-                    ) : (
-                      IconComponent && <IconComponent className="command__item-icon" />
-                    )}
-                    {item.label}
-                  </CommandItem>
-                )
-              })}
+            {currentPage === 'main' && (
+              // cmdk moves items outside a group to the end of the list, which would put them
+              // below 'after' results. A group without a heading keeps them in place.
+              <StrayItemsWrapper wrap={Boolean(docSearchEndpoint) && docSearchPosition === 'after'}>
+                {visibleItems?.map((item) => {
+                  const isDynamicIcon = typeof item.icon === 'string'
+                  const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
+                  return (
+                    <CommandItem
+                      data-action-type={item.action.type}
+                      data-item-type={item.type}
+                      key={item.slug}
+                      keywords={[item.label]}
+                      onSelect={() => handleSelect(item)}
+                      value={item.slug}
+                    >
+                      {isDynamicIcon ? (
+                        <LucideIconDynamic
+                          className="command__item-icon"
+                          name={item.icon as IconName}
+                        />
+                      ) : (
+                        IconComponent && <IconComponent className="command__item-icon" />
+                      )}
+                      {item.label}
+                    </CommandItem>
+                  )
+                })}
+              </StrayItemsWrapper>
+            )}
 
             {docSearchPosition === 'after' && docResultsBlock}
 
