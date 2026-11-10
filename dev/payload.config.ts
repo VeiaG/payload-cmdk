@@ -9,6 +9,7 @@ import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
+import { documentSearchEndpoint } from './documentSearchEndpoint'
 import { testEmailAdapter } from './helpers/testEmailAdapter'
 import { seed } from './seed'
 
@@ -271,6 +272,7 @@ const buildConfigWithMemoryDB = async () => {
     }),
     editor: lexicalEditor(),
     email: testEmailAdapter,
+    endpoints: [documentSearchEndpoint],
     globals: [
       {
         slug: 'site-settings',
@@ -555,6 +557,12 @@ const buildConfigWithMemoryDB = async () => {
             },
           },
         ],
+        // Live posts/pages results while typing (see ./documentSearchEndpoint.ts)
+        documentSearch: {
+          endpoint: '/api/cmdk-search',
+          position: 'after',
+          toggle: true,
+        },
         icons: {
           collections: {
             categories: 'Folder',

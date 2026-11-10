@@ -10,6 +10,7 @@ import type {
   CommandMenuGroup,
   CommandMenuItem,
   CommandMenuPage,
+  DocumentSearchResponse,
   GenericCollectionDocument,
   IconName,
   PluginCommandMenuConfig,
@@ -20,9 +21,11 @@ import {
   useAuth,
   useConfig,
   useModal,
+  usePreferences,
   useRouteTransition,
   useTranslation,
 } from '@payloadcms/ui'
+import { defaultFilter } from 'cmdk'
 import { ArrowBigUp, ChevronLeft, Command as CommandIcon, Option } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatAdminURL } from 'payload/shared'
@@ -40,7 +43,7 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { createDefaultGroups } from '../utils/index'
-import { getCommandMenuAction } from '../utils/registry'
+import { getCommandMenuAction, getCommandMenuFilter } from '../utils/registry'
 import {
   Command,
   CommandEmpty,
@@ -84,6 +87,168 @@ export const useCommandMenu = () => {
 
 const ITEM_SELECTOR = `[cmdk-item=""]`
 
+// --- documentSearch ---------------------------------------------------------------------
+// Live document results on the main page, fetched from `documentSearch.endpoint`. Answers are
+// cached per query for the page's lifetime (bounded, short TTL), so backspacing and retyping
+// never hit the network twice.
+const DOC_VALUE_PREFIX = 'qs:'
+const DOC_CACHE_TTL_MS = 30_000
+const DOC_CACHE_MAX = 100
+/**
+ * Payload preference that remembers the `documentSearch.toggle` checkbox per user, stored as
+ * `{ enabled: boolean }`. Not a bare boolean: Payload's preference endpoint stores
+ * `data.value || data`, so a bare `false` would come back as `{ value: false }`.
+ */
+const DOC_TOGGLE_PREFERENCE = 'payload-cmdk-document-search'
+type DocTogglePreference = { enabled: boolean }
+const docCache = new Map<string, { expiresAt: number; value: DocumentSearchResponse }>()
+/** Whose answers `docCache` holds: they depend on the user's access, so a new user starts empty. */
+let docCacheUser: string | undefined
+
+function claimDocCacheFor(user: string) {
+  if (docCacheUser !== user) {
+    docCache.clear()
+    docCacheUser = user
+  }
+}
+
+function readDocCache(key: string): DocumentSearchResponse | undefined {
+  const entry = docCache.get(key)
+  if (!entry) {
+    return undefined
+  }
+  if (entry.expiresAt <= Date.now()) {
+    docCache.delete(key)
+    return undefined
+  }
+  return entry.value
+}
+
+function writeDocCache(key: string, value: DocumentSearchResponse) {
+  docCache.delete(key)
+  docCache.set(key, { expiresAt: Date.now() + DOC_CACHE_TTL_MS, value })
+  while (docCache.size > DOC_CACHE_MAX) {
+    docCache.delete(docCache.keys().next().value as string)
+  }
+}
+
+/**
+ * While the request for "mill" is in flight, show what a cached "mil" (or any shorter
+ * prefix) already found, narrowed to the items containing every word. The real answer
+ * replaces it as soon as it lands.
+ */
+function provisionalDocResults(cacheKey: string, minLength: number): DocumentSearchResponse | null {
+  const words = cacheKey.split(' ').filter(Boolean)
+  for (let length = cacheKey.length - 1; length >= minLength; length--) {
+    const cached = readDocCache(cacheKey.slice(0, length))
+    if (!cached) {
+      continue
+    }
+    const groups = cached.groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          const haystack = `${item.label} ${item.description ?? ''}`.toLowerCase()
+          return words.every((word) => haystack.includes(word))
+        }),
+      }))
+      .filter((group) => group.items.length > 0)
+    return groups.length > 0 ? { ...cached, groups, moreHref: undefined } : null
+  }
+  return null
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Bold the query words inside a result label. */
+function HighlightedText({ query, text }: { query: string; text: string }) {
+  const words = query.split(/\s+/).filter((word) => word.length > 0)
+  if (!text || words.length === 0) {
+    return text
+  }
+  const pattern = new RegExp(`(${words.map(escapeRegExp).join('|')})`, 'gi')
+  return text.split(pattern).map((part, index) =>
+    index % 2 === 1 ? (
+      <mark className="command__match" key={index}>
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  )
+}
+// -------------------------------------------------------------------------------------------
+
+/** Menu entries use the registered filter (`registerCommandMenuFilter`), else cmdk's fuzzy one. */
+const menuItemsFilter = (value: string, search: string, keywords?: string[]): number =>
+  (getCommandMenuFilter() ?? defaultFilter)(value, search, keywords)
+
+/** Document results are already filtered by the endpoint: always keep them. */
+const commandFilter = (value: string, search: string, keywords?: string[]): number =>
+  value.startsWith(DOC_VALUE_PREFIX) ? 1 : menuItemsFilter(value, search, keywords)
+
+/**
+ * cmdk sorts the items inside a group, but its group sort never takes effect (it looks groups
+ * up by their internal id, while the DOM carries the heading), so groups stay in config order
+ * and a weak match in an early group shows above an exact one further down. Order the groups
+ * here by their best entry; equal scores keep the config order.
+ */
+function rankGroupsBySearch(
+  groups: CommandMenuGroup[],
+  search: string,
+  getGroupTitle: (group: CommandMenuGroup) => string,
+): CommandMenuGroup[] {
+  if (!search.trim()) {
+    return groups
+  }
+  return groups
+    .map((group, index) => ({
+      // Same keywords as the rendered items (translated title), so the ranking matches cmdk.
+      best: Math.max(
+        0,
+        ...group.items.map((item) =>
+          menuItemsFilter(item.slug, search, [getGroupTitle(group), item.label]),
+        ),
+      ),
+      group,
+      index,
+    }))
+    .sort((a, b) => b.best - a.best || a.index - b.index)
+    .map(({ group }) => group)
+}
+
+function StrayItemsWrapper({ children, wrap }: { children: React.ReactNode; wrap: boolean }) {
+  return wrap ? <CommandGroup>{children}</CommandGroup> : <>{children}</>
+}
+
+/**
+ * Accept only what `DocumentSearchResponse` promises, so an endpoint that answers an error
+ * object with status 200 shows no results instead of crashing the admin.
+ */
+function toDocumentSearchResponse(data: unknown, query: string): DocumentSearchResponse {
+  const response = (data ?? {}) as Partial<DocumentSearchResponse>
+  const groups = Array.isArray(response.groups)
+    ? response.groups.filter((group) => Array.isArray(group?.items))
+    : []
+  return {
+    groups,
+    moreHref: typeof response.moreHref === 'string' ? response.moreHref : undefined,
+    query: typeof response.query === 'string' ? response.query : query,
+  }
+}
+
+/** A document result as a menu item, so selecting it goes through the normal link action. */
+function docLinkItem(id: string, href: string): CommandMenuItem {
+  return {
+    slug: `${DOC_VALUE_PREFIX}${id}`,
+    type: 'custom',
+    action: { type: 'link', href },
+    label: href,
+  }
+}
+
 function getSelectedElement(containerRef: React.RefObject<HTMLElement | null>) {
   return containerRef.current?.querySelector(`${ITEM_SELECTOR}[aria-selected="true"]`)
 }
@@ -94,16 +259,23 @@ const CommandMenuComponent: React.FC<{
   const [search, setSearch] = useState('')
   const [submenuItems, setSubmenuItems] = useState<CommandMenuItem[]>([])
   const [isLoadingSubmenu, setIsLoadingSubmenu] = useState(false)
+  const [docResults, setDocResults] = useState<DocumentSearchResponse | null>(null)
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false)
+  // The highlighted entry. Controlled so that live results can claim it (see below).
+  const [selectedValue, setSelectedValue] = useState('')
   const [isMac, setIsMac] = useState(false)
 
   const commandListRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const { closeMenu, currentPage, groups, items, setPage } = useCommandMenu()
+  const { closeMenu, currentPage, groups, isOpen, items, setPage } = useCommandMenu()
   const router = useRouter()
   const pathname = usePathname()
   const { startRouteTransition } = useRouteTransition()
   const { t } = useTranslation<CustomTranslationsObject, CustomTranslationsKeys>()
   const { config } = useConfig()
+  const { user } = useAuth()
+  const userKey = user?.id != null ? String(user.id) : ''
 
   // Detect which collection the user is currently viewing (if any) and whether
   // they are on the list page or a specific document/create page.
@@ -170,6 +342,25 @@ const CommandMenuComponent: React.FC<{
   const visibleItems = useMemo(() => {
     return items.filter((item) => isEntryVisible(item))
   }, [items, isEntryVisible])
+
+  // The heading shown for a group: the default groups get Payload's translated titles.
+  const getGroupTitle = useCallback(
+    (group: CommandMenuGroup): string => {
+      if (group.title === 'Collections') {
+        return t('general:collections')
+      }
+      if (group.title === 'Globals') {
+        return t('general:globals')
+      }
+      return group.title
+    },
+    [t],
+  )
+
+  const rankedGroups = useMemo(
+    () => rankGroupsBySearch(visibleGroups, search, getGroupTitle),
+    [visibleGroups, search, getGroupTitle],
+  )
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform))
@@ -257,6 +448,113 @@ const CommandMenuComponent: React.FC<{
     const timeoutId = setTimeout(fetchDocuments, 300)
     return () => clearTimeout(timeoutId)
   }, [search, currentPage, pluginConfig?.submenu?.icons, adminRoute])
+
+  const docSearchEndpoint = pluginConfig?.documentSearch?.endpoint
+  const docSearchMinLength = pluginConfig?.documentSearch?.minLength ?? 2
+  const docSearchDebounceMs = pluginConfig?.documentSearch?.debounceMs ?? 60
+  const docSearchPosition = pluginConfig?.documentSearch?.position ?? 'before'
+  const docSearchToggle = pluginConfig?.documentSearch?.toggle === true
+
+  // `documentSearch.toggle`: results are on until the user unticks the footer checkbox.
+  const { getPreference, setPreference } = usePreferences()
+  const [showDocuments, setShowDocuments] = useState(true)
+  useEffect(() => {
+    // Each user has their own choice; without one (login page) there is none to read.
+    setShowDocuments(true)
+    if (!docSearchToggle || !userKey) {
+      return
+    }
+    let cancelled = false
+    getPreference<DocTogglePreference | null>(DOC_TOGGLE_PREFERENCE)
+      .then((stored) => {
+        if (!cancelled && typeof stored?.enabled === 'boolean') {
+          setShowDocuments(stored.enabled)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [docSearchToggle, getPreference, userKey])
+  const toggleShowDocuments = (next: boolean) => {
+    setShowDocuments(next)
+    setPreference<DocTogglePreference>(DOC_TOGGLE_PREFERENCE, { enabled: next }).catch(() => {})
+    // Clicking the checkbox focuses it; keep typing in the search input instead.
+    inputRef.current?.focus()
+  }
+  const isDocSearchOn = Boolean(docSearchEndpoint) && (!docSearchToggle || showDocuments)
+  const docQuery = search.replace(/\s+/g, ' ').trim()
+
+  useEffect(() => {
+    if (currentPage !== 'main' || !isDocSearchOn || docQuery.length < docSearchMinLength) {
+      setDocResults(null)
+      setIsLoadingDocs(false)
+      return
+    }
+    claimDocCacheFor(userKey)
+    const cacheKey = docQuery.toLowerCase()
+    const cached = readDocCache(cacheKey)
+    if (cached) {
+      setDocResults(cached)
+      setIsLoadingDocs(false)
+      return
+    }
+    // Narrow what a shorter query already found; otherwise keep the previous results until
+    // the new ones land (no flicker).
+    const provisional = provisionalDocResults(cacheKey, docSearchMinLength)
+    if (provisional) {
+      setDocResults(provisional)
+    }
+    setIsLoadingDocs(true)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(async () => {
+      try {
+        const response = await fetch(`${docSearchEndpoint}?q=${encodeURIComponent(docQuery)}`, {
+          credentials: 'include',
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          throw new Error(`[payload-cmdk] document search failed: ${response.status}`)
+        }
+        const data = toDocumentSearchResponse(await response.json(), docQuery)
+        writeDocCache(cacheKey, data)
+        // A search that was cancelled meanwhile (new query, results turned off) must not show.
+        if (!controller.signal.aborted) {
+          setDocResults(data)
+        }
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError' || controller.signal.aborted) {
+          return
+        }
+        setDocResults(null)
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingDocs(false)
+        }
+      }
+    }, docSearchDebounceMs)
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [
+    currentPage,
+    docQuery,
+    docSearchEndpoint,
+    docSearchMinLength,
+    docSearchDebounceMs,
+    isDocSearchOn,
+    userKey,
+  ])
+
+  // Opening the menu warms up the endpoint (session, connection), so the first real
+  // keystroke does not pay for it.
+  useEffect(() => {
+    if (!isOpen || !docSearchEndpoint || !isDocSearchOn) {
+      return
+    }
+    fetch(`${docSearchEndpoint}?q=`, { credentials: 'include' }).catch(() => {})
+  }, [isOpen, docSearchEndpoint, isDocSearchOn])
 
   const handleBack = useCallback(() => {
     setPage('main')
@@ -349,6 +647,17 @@ const CommandMenuComponent: React.FC<{
         return
       }
 
+      // Cmd/Ctrl+Enter on a document result opens it in a new tab
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && currentPage === 'main') {
+        const href = getSelectedElement(commandListRef)?.getAttribute('data-href')
+        if (href) {
+          e.preventDefault()
+          e.stopPropagation()
+          window.open(href, '_blank', 'noopener')
+          return
+        }
+      }
+
       // Enter/Shift+Enter handling for collection submenu
       if (e.key === 'Enter' && currentPage === 'main') {
         const selectedElement = getSelectedElement(commandListRef)
@@ -405,6 +714,83 @@ const CommandMenuComponent: React.FC<{
           ? [{ key: 'Enter', label: t('cmdkPlugin:navigate') }]
           : [{ key: 'Enter', label: t('cmdkPlugin:open') }]
 
+  const hasDocResults =
+    currentPage === 'main' && isDocSearchOn && (docResults?.groups?.length ?? 0) > 0
+  if (hasDocResults) {
+    footerShortcuts.push({ key: 'meta + Enter', label: t('cmdkPlugin:openInNewTab') })
+  }
+
+  // cmdk only highlights the first entry when nothing is highlighted, and it keeps the value of
+  // a highlighted entry that a new search filtered away. Results that land later would then
+  // show with nothing highlighted, and Enter would do nothing. Highlight the first entry then.
+  useEffect(() => {
+    if (!hasDocResults || getSelectedElement(commandListRef)) {
+      return
+    }
+    const first = commandListRef.current?.querySelector(
+      `${ITEM_SELECTOR}:not([aria-disabled="true"])`,
+    )
+    const value = first?.getAttribute('data-value')
+    if (value) {
+      setSelectedValue(value)
+    }
+  }, [docResults, hasDocResults])
+
+  const docResultsBlock = hasDocResults && docResults && (
+    <Fragment key="document-search">
+      {docResults.groups.map((group) => (
+        <CommandGroup
+          className="command__group--documents"
+          forceMount
+          heading={group.title}
+          key={`documents-${group.slug}`}
+        >
+          {group.items.map((item) => (
+            <CommandItem
+              className="command__item--document"
+              data-href={item.href}
+              data-item-type="document"
+              forceMount
+              key={item.id}
+              onSelect={() => handleSelect(docLinkItem(item.id, item.href))}
+              value={`${DOC_VALUE_PREFIX}${item.id}`}
+            >
+              <LucideIconDynamic className="command__item-icon" name={group.icon} />
+              <span className="command__item-text">
+                <span className="command__item-label">
+                  <HighlightedText query={search} text={item.label} />
+                </span>
+                {item.description && (
+                  <span className="command__item-description">
+                    <HighlightedText query={search} text={item.description} />
+                  </span>
+                )}
+              </span>
+              {item.badge && <span className="command__item-badge">{item.badge}</span>}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      ))}
+      {docResults.moreHref && (
+        <CommandGroup className="command__group--documents" forceMount key="documents-more">
+          <CommandItem
+            data-href={docResults.moreHref}
+            data-item-type="document"
+            forceMount
+            onSelect={() => handleSelect(docLinkItem('more', docResults.moreHref!))}
+            value={`${DOC_VALUE_PREFIX}more`}
+          >
+            <LucideIconDynamic className="command__item-icon" name="Search" />
+            <span className="command__item-label">
+              {t('cmdkPlugin:showAllResults', { query: docResults.query })}
+            </span>
+            <CommandShortcut>›</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+      )}
+    </Fragment>
+  )
+
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Close modal only if clicking the backdrop (not the command itself)
     if (e.target === e.currentTarget) {
@@ -419,7 +805,13 @@ const CommandMenuComponent: React.FC<{
         className={`command-modal ${blurBg ? 'command-modal--blur' : ''}`}
         onClick={handleBackdropClick}
       >
-        <Command label="Command Menu" shouldFilter={!shouldDisableFilter}>
+        <Command
+          filter={commandFilter}
+          label="Command Menu"
+          onValueChange={setSelectedValue}
+          shouldFilter={!shouldDisableFilter}
+          value={selectedValue}
+        >
           {/* Header for submenu navigation */}
           {currentPage !== 'main' && (
             <div className="command__header">
@@ -432,29 +824,38 @@ const CommandMenuComponent: React.FC<{
             </div>
           )}
 
-          <CommandInput onValueChange={setSearch} placeholder={placeholder} value={search} />
-          <CommandList ref={commandListRef}>
-            <CommandEmpty>
-              {isLoadingSubmenu ? t('cmdkPlugin:loading') : t('cmdkPlugin:noResults')}
-            </CommandEmpty>
+          <CommandInput
+            onValueChange={setSearch}
+            placeholder={placeholder}
+            ref={inputRef}
+            value={search}
+          />
+          <CommandList
+            className={docSearchEndpoint ? 'command__list--documents' : undefined}
+            ref={commandListRef}
+          >
+            {/* cmdk does not count forceMount items, so it would call a list of results empty */}
+            {!hasDocResults && (
+              <CommandEmpty>
+                {isLoadingSubmenu || isLoadingDocs
+                  ? t('cmdkPlugin:loading')
+                  : t('cmdkPlugin:noResults')}
+              </CommandEmpty>
+            )}
+
+            {docSearchPosition === 'before' && docResultsBlock}
 
             {/* Main page view */}
             {currentPage === 'main' &&
-              visibleGroups.map((group, index) => {
+              rankedGroups.map((group, index) => {
                 if (group.items.length === 0) {
                   return null
                 }
 
-                let titleName = group.title
-                if (group.title === 'Collections') {
-                  titleName = t('general:collections')
-                }
-                if (group.title === 'Globals') {
-                  titleName = t('general:globals')
-                }
+                const titleName = getGroupTitle(group)
 
                 const isRenderSeparator = !(
-                  index === visibleGroups.length - 1 && visibleItems.length === 0
+                  index === rankedGroups.length - 1 && visibleItems.length === 0
                 )
                 return (
                   <Fragment key={group.title}>
@@ -493,31 +894,38 @@ const CommandMenuComponent: React.FC<{
               })}
 
             {/* Stray items on main page */}
-            {currentPage === 'main' &&
-              visibleItems?.map((item) => {
-                const isDynamicIcon = typeof item.icon === 'string'
-                const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
-                return (
-                  <CommandItem
-                    data-action-type={item.action.type}
-                    data-item-type={item.type}
-                    key={item.slug}
-                    keywords={[item.label]}
-                    onSelect={() => handleSelect(item)}
-                    value={item.slug}
-                  >
-                    {isDynamicIcon ? (
-                      <LucideIconDynamic
-                        className="command__item-icon"
-                        name={item.icon as IconName}
-                      />
-                    ) : (
-                      IconComponent && <IconComponent className="command__item-icon" />
-                    )}
-                    {item.label}
-                  </CommandItem>
-                )
-              })}
+            {currentPage === 'main' && (
+              // cmdk moves items outside a group to the end of the list, which would put them
+              // below 'after' results. A group without a heading keeps them in place.
+              <StrayItemsWrapper wrap={Boolean(docSearchEndpoint) && docSearchPosition === 'after'}>
+                {visibleItems?.map((item) => {
+                  const isDynamicIcon = typeof item.icon === 'string'
+                  const IconComponent = isDynamicIcon ? null : (item.icon as LucideIcon)
+                  return (
+                    <CommandItem
+                      data-action-type={item.action.type}
+                      data-item-type={item.type}
+                      key={item.slug}
+                      keywords={[item.label]}
+                      onSelect={() => handleSelect(item)}
+                      value={item.slug}
+                    >
+                      {isDynamicIcon ? (
+                        <LucideIconDynamic
+                          className="command__item-icon"
+                          name={item.icon as IconName}
+                        />
+                      ) : (
+                        IconComponent && <IconComponent className="command__item-icon" />
+                      )}
+                      {item.label}
+                    </CommandItem>
+                  )
+                })}
+              </StrayItemsWrapper>
+            )}
+
+            {docSearchPosition === 'after' && docResultsBlock}
 
             {/* Submenu page view */}
             {currentPage !== 'main' &&
@@ -554,6 +962,20 @@ const CommandMenuComponent: React.FC<{
                   <kbd>{formatShortcutKey(shortcut.key)}</kbd> {shortcut.label}
                 </span>
               ))}
+              {currentPage === 'main' && docSearchEndpoint && docSearchToggle && (
+                // preventDefault on mousedown keeps the focus (and typing) in the search input.
+                // The label wraps the checkbox and its text, so it is still a proper label.
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+                <label className="command__toggle" onMouseDown={(e) => e.preventDefault()}>
+                  {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- wrapped by the label */}
+                  <input
+                    checked={showDocuments}
+                    onChange={(e) => toggleShowDocuments(e.target.checked)}
+                    type="checkbox"
+                  />
+                  {t('cmdkPlugin:showDocuments')}
+                </label>
+              )}
             </div>
           )}
         </Command>

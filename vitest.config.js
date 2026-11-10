@@ -11,6 +11,8 @@ export default defineConfig(() => {
   loadEnv(path.resolve(dirname, './dev'))
 
   return {
+    // tsconfig keeps `jsx: preserve` for Next; the component tests need React's automatic runtime.
+    esbuild: { jsx: 'automatic' },
     plugins: [
       tsconfigPaths({
         ignoreConfigErrors: true,

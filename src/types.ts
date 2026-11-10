@@ -123,6 +123,92 @@ export type CustomMenuGroup = {
   type: 'group'
 }
 /**
+ * One live result of the document search.
+ */
+export type DocumentSearchResultItem = {
+  /**
+   * Small tag shown on the right, e.g. a status.
+   */
+  badge?: string
+  /**
+   * Second line under the label, e.g. an email address.
+   */
+  description?: string
+  /**
+   * Where Enter takes the user (Cmd/Ctrl+Enter opens it in a new tab).
+   */
+  href: string
+  /**
+   * Unique across all groups of one response, e.g. `${collection}:${doc.id}`.
+   */
+  id: string
+  label: string
+}
+
+/**
+ * A group of live results, shown under its own heading.
+ */
+export type DocumentSearchResultGroup = {
+  /**
+   * Icon name from lucide-react, shown on every result of the group.
+   */
+  icon: IconName
+  items: DocumentSearchResultItem[]
+  slug: string
+  title: string
+}
+
+/**
+ * What the `documentSearch.endpoint` answers for `?q=<query>`.
+ */
+export type DocumentSearchResponse = {
+  groups: DocumentSearchResultGroup[]
+  /**
+   * Optional link to a page with all results, shown as a last entry ("Show all results for …").
+   */
+  moreHref?: string
+  /**
+   * The query the results belong to.
+   */
+  query: string
+}
+
+/**
+ * Live document results on the main page of the command menu, fetched from your own endpoint
+ * while the user types.
+ */
+export type DocumentSearchConfig = {
+  /**
+   * Wait this long after the last keystroke before fetching.
+   * @default 60
+   */
+  debounceMs?: number
+  /**
+   * Your endpoint. It gets `GET <endpoint>?q=<query>` with the user's cookies and must answer
+   * a `DocumentSearchResponse`. It is also called once with an empty `q` when the menu opens,
+   * to warm it up; answer that with no groups.
+   */
+  endpoint: string
+  /**
+   * Don't search for queries shorter than this.
+   * @default 2
+   */
+  minLength?: number
+  /**
+   * Whether the results show above or below the menu entries (collections, globals, custom
+   * items). With 'after', the menu entries keep the first place and Enter opens them first.
+   * @default 'before'
+   */
+  position?: 'after' | 'before'
+  /**
+   * Show a checkbox in the footer that turns the results on and off. The choice is saved per
+   * user as a Payload preference. Results are on until the user unticks it.
+   * @default false
+   */
+  toggle?: boolean
+}
+
+/**
  * Full config for the plugin.
  *
  * Everything here is serializable except the `access` functions on custom items and
@@ -144,6 +230,11 @@ export type PluginCommandMenuConfig = {
    * @default false
    */
   disabled?: boolean
+  /**
+   * Live document results while typing, from your own search endpoint.
+   * Off unless configured.
+   */
+  documentSearch?: DocumentSearchConfig
   /**
    * Custom icons for collections and globals.
    * Key is the collection slug, value is the icon name from lucide-react.
