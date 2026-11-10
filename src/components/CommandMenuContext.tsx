@@ -195,15 +195,22 @@ const commandFilter = (value: string, search: string, keywords?: string[]): numb
  * and a weak match in an early group shows above an exact one further down. Order the groups
  * here by their best entry; equal scores keep the config order.
  */
-function rankGroupsBySearch(groups: CommandMenuGroup[], search: string): CommandMenuGroup[] {
+function rankGroupsBySearch(
+  groups: CommandMenuGroup[],
+  search: string,
+  getGroupTitle: (group: CommandMenuGroup) => string,
+): CommandMenuGroup[] {
   if (!search.trim()) {
     return groups
   }
   return groups
     .map((group, index) => ({
+      // Same keywords as the rendered items (translated title), so the ranking matches cmdk.
       best: Math.max(
         0,
-        ...group.items.map((item) => menuItemsFilter(item.slug, search, [group.title, item.label])),
+        ...group.items.map((item) =>
+          menuItemsFilter(item.slug, search, [getGroupTitle(group), item.label]),
+        ),
       ),
       group,
       index,
@@ -336,9 +343,23 @@ const CommandMenuComponent: React.FC<{
     return items.filter((item) => isEntryVisible(item))
   }, [items, isEntryVisible])
 
+  // The heading shown for a group: the default groups get Payload's translated titles.
+  const getGroupTitle = useCallback(
+    (group: CommandMenuGroup): string => {
+      if (group.title === 'Collections') {
+        return t('general:collections')
+      }
+      if (group.title === 'Globals') {
+        return t('general:globals')
+      }
+      return group.title
+    },
+    [t],
+  )
+
   const rankedGroups = useMemo(
-    () => rankGroupsBySearch(visibleGroups, search),
-    [visibleGroups, search],
+    () => rankGroupsBySearch(visibleGroups, search, getGroupTitle),
+    [visibleGroups, search, getGroupTitle],
   )
 
   useEffect(() => {
@@ -831,13 +852,7 @@ const CommandMenuComponent: React.FC<{
                   return null
                 }
 
-                let titleName = group.title
-                if (group.title === 'Collections') {
-                  titleName = t('general:collections')
-                }
-                if (group.title === 'Globals') {
-                  titleName = t('general:globals')
-                }
+                const titleName = getGroupTitle(group)
 
                 const isRenderSeparator = !(
                   index === rankedGroups.length - 1 && visibleItems.length === 0

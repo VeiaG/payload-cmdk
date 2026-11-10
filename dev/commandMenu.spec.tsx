@@ -26,6 +26,9 @@ const menuConfig = vi.hoisted(() => ({
   routes: { admin: '/admin' },
 }))
 
+/** Translations the mocked `t` knows; any other key comes back as is. */
+const translations = vi.hoisted(() => ({}) as Record<string, string>)
+
 /** The logged-in user; `null` on the login page. */
 const auth = vi.hoisted(() => ({ user: { id: 'u1' } as { id: string } | null }))
 
@@ -49,7 +52,7 @@ vi.mock('@payloadcms/ui', () => ({
   Modal: ({ children }: { children?: React.ReactNode }) => <div data-modal>{children}</div>,
   useAuth: () => ({
     permissions: {
-      collections: { media: { read: true }, newsletters: { read: true } },
+      collections: { media: { read: true }, newsletters: { read: true }, posts: { read: true } },
       globals: {},
     },
     user: auth.user,
@@ -66,7 +69,7 @@ vi.mock('@payloadcms/ui', () => ({
     setPreference: (key: string, value: unknown) => prefs.set(key, value),
   }),
   useRouteTransition: () => ({ startRouteTransition: (fn: () => void) => fn() }),
-  useTranslation: () => ({ i18n: { language: 'en' }, t: (key: string) => key }),
+  useTranslation: () => ({ i18n: { language: 'en' }, t: (key: string) => translations[key] ?? key }),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -146,6 +149,9 @@ afterEach(() => {
   root = null
   container.remove()
   registerCommandMenuFilter(undefined)
+  for (const key of Object.keys(translations)) {
+    delete translations[key]
+  }
   vi.unstubAllGlobals()
 })
 
@@ -182,6 +188,28 @@ describe('menu ranking', () => {
     registerCommandMenuFilter((value) => (value === 'newsletters' ? 1 : 0))
     await typeSearch('zzz')
     expect(shownOptions()).toEqual(['Newsletter Media Kits'])
+  })
+
+  test('ranks the default groups by their translated title, like the rendered items', async () => {
+    // A collection without `admin.group` lands in the default "Collections" group.
+    const extra = { slug: 'posts', fields: [], labels: { plural: 'Posts' } }
+    menuConfig.collections.push(extra as (typeof menuConfig.collections)[number])
+    translations['general:collections'] = 'Колекції'
+    try {
+      // Group title match beats the weak match of "newsletters" in the earlier group.
+      registerCommandMenuFilter((value, search, keywords = []) =>
+        keywords[0]?.toLowerCase().includes(search.toLowerCase())
+          ? 1
+          : value === 'newsletters'
+            ? 0.5
+            : 0,
+      )
+      await renderMenu()
+      await typeSearch('колекції')
+      expect(shownOptions()).toEqual(['Posts', 'Newsletter Media Kits'])
+    } finally {
+      menuConfig.collections.pop()
+    }
   })
 })
 
